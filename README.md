@@ -18,8 +18,14 @@ pip install -e ".[dev]"
 Set the following environment variables:
 
 - `LAZYPR_MODEL` - ZAI model identifier (e.g., "cerebras:zai-glm-4.7")
-- `LAZYPR_API_KEY` - API key for authentication
+- `LAZYPR_API_KEY` - API key for authentication (optional)
 - `LAZYPR_MAX_DIFF_LINES` - Maximum diff lines per file (default: 1000)
+
+**Note:** `LAZYPR_API_KEY` is optional. You can use provider-specific environment variables instead:
+- `ZAI_API_KEY` for Cerebras models
+- `OPENAI_API_KEY` for OpenAI models
+- `ANTHROPIC_API_KEY` for Anthropic models
+- etc.
 
 ## Usage
 
@@ -49,6 +55,23 @@ __pycache__/
 *.tmp
 !important.log  # Negation patterns work too
 ```
+
+## Building
+
+To install or rebuild the `lazypr` command:
+
+```bash
+# Install in development mode (editable)
+pip install -e .
+
+# Install with development dependencies
+pip install -e ".[dev]"
+
+# Build package for distribution
+python -m build
+```
+
+The `lazypr` command will be available in your PATH after installation.
 
 ## Development
 
