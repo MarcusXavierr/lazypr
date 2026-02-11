@@ -12,6 +12,9 @@ import typer
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.models import ModelSettings
+from rich.console import Console
+
+console = Console()
 
 app = typer.Typer(help="AI-powered PR creation from git diffs")
 
@@ -523,8 +526,8 @@ async def create(base: str) -> None:
     if not filtered_diff.strip():
         raise DiffError("No changes left after filtering")
 
-    typer.echo("Generating PR content with AI...")
-    pr_content = await generate_pr_content(filtered_diff)
+    with console.status("[bold green]Generating PR content with AI...", spinner="dots"):
+        pr_content = await generate_pr_content(filtered_diff)
 
     typer.echo(f"\nTitle: {pr_content.title}")
     typer.echo(f"Description:\n{pr_content.description}\n")
