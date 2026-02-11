@@ -55,18 +55,28 @@ def create_pr(title: str, description: str, base: str) -> None:
         raise ValidationError(f"Failed to create PR: {e}") from e
 
 
+# Available languages for PR generation
+LANGUAGE_CHOICES = ["en", "pt", "es", "fr", "de", "zh", "ja", "ko", "it", "ru"]
+
+
 # CLI command
 @app.command(name="create")
 def create_cmd(
     base: str = typer.Option(..., "--base", help="Base branch to compare against"),
+    lang: str = typer.Option(
+        "en",
+        "--lang",
+        help="Language for the PR title and description (en, pt, es, fr, de, zh, ja, ko, it, ru)",
+        case_sensitive=False,
+    ),
 ) -> None:
     """Create a PR with AI-generated title and description."""
     import asyncio
 
-    asyncio.run(create(base))
+    asyncio.run(create(base, lang))
 
 
-async def create(base: str) -> None:
+async def create(base: str, language: str = "en") -> None:
     """Async implementation of create command."""
     # Validation checks
     if not is_git_repo():
@@ -111,7 +121,7 @@ async def create(base: str) -> None:
         raise DiffError("No changes left after filtering")
 
     with console.status("[bold green]Generating PR content with AI...", spinner="dots"):
-        pr_content = await generate_pr_content(filtered_diff)
+        pr_content = await generate_pr_content(filtered_diff, language)
 
     typer.echo(f"\nTitle: {pr_content.title}")
     typer.echo(f"Description:\n{pr_content.description}\n")

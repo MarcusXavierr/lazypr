@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
-from lazypr import (
+from lazypr.ai import (
     generate_pr_content,
     PRContent,
     AIError,
@@ -77,3 +77,16 @@ class TestGeneratePrContent:
             call_args = mock_agent.run.call_args
             prompt = call_args[0][0] if call_args[0] else call_args[1].get('prompt', '')
             assert diff_content in prompt
+
+    @pytest.mark.asyncio
+    async def test_uses_language_in_prompt(self):
+        """Should include language instruction in the prompt."""
+        mock_agent = MagicMock()
+        mock_agent.run = AsyncMock()
+
+        with patch("lazypr.ai.create_pr_agent", return_value=mock_agent):
+            await generate_pr_content("some diff", language="pt")
+            call_args = mock_agent.run.call_args
+            prompt = call_args[0][0] if call_args[0] else call_args[1].get('prompt', '')
+            assert "Portuguese" in prompt
+            assert "respond entirely in" in prompt
