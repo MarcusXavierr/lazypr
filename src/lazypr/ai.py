@@ -45,11 +45,28 @@ Always output valid JSON with fields: title (max 72 chars), description
     return agent
 
 
-async def generate_pr_content(diff: str) -> PRContent:
+async def generate_pr_content(diff: str, language: str = "en") -> PRContent:
     """Generate PR title and description from diff using AI."""
     agent = create_pr_agent()
 
+    # Build language instruction
+    language_names = {
+        "en": "English",
+        "pt": "Brazilian Portuguese",
+        "es": "Spanish",
+        "fr": "French",
+        "de": "German",
+        "zh": "Simplified Chinese",
+        "ja": "Japanese",
+        "ko": "Korean",
+        "it": "Italian",
+        "ru": "Russian",
+    }
+    lang_name = language_names.get(language, "English")
+
     prompt = f"""You are an assistant specialized in documenting Pull Requests clearly and professionally.
+
+IMPORTANT: You must respond entirely in {lang_name}.
 
 Analyze the provided code diff and generate a PR description following this structure:
 
