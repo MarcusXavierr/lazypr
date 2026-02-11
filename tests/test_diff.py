@@ -25,7 +25,7 @@ index 123..456 100644
 -    print("old")
 +    print("new")
 """
-        with patch("lazypr.subprocess.run") as mock_run:
+        with patch("src.lazypr.diff.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=0,
                 stdout=diff_output
@@ -35,7 +35,7 @@ index 123..456 100644
 
     def test_raises_error_when_base_branch_missing(self):
         """Should raise DiffError when base branch doesn't exist."""
-        with patch("lazypr.subprocess.run") as mock_run:
+        with patch("src.lazypr.diff.subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.CalledProcessError(128, "git")
             with pytest.raises(DiffError):
                 get_diff("nonexistent-branch")
