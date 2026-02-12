@@ -3,10 +3,12 @@ import subprocess
 import pytest
 from unittest.mock import patch, MagicMock
 
-from lazypr import (
+from lazypr.diff import (
     get_diff,
+    get_diff_remote,
     parse_diff_lines,
     filter_large_files,
+    rebuild_diff_with_files,
     DiffError,
 )
 
@@ -25,7 +27,7 @@ index 123..456 100644
 -    print("old")
 +    print("new")
 """
-        with patch("src.lazypr.diff.subprocess.run") as mock_run:
+        with patch("lazypr.diff.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(
                 returncode=0,
                 stdout=diff_output
@@ -35,7 +37,7 @@ index 123..456 100644
 
     def test_raises_error_when_base_branch_missing(self):
         """Should raise DiffError when base branch doesn't exist."""
-        with patch("src.lazypr.diff.subprocess.run") as mock_run:
+        with patch("lazypr.diff.subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.CalledProcessError(128, "git")
             with pytest.raises(DiffError):
                 get_diff("nonexistent-branch")
@@ -145,4 +147,102 @@ index 123..456 100644
 @@ -1,2000 +1,2000 @@
 """
         result = filter_large_files(diff, max_lines=100)
+        assert result == ""
+
+
+class TestGetDiffRemote:
+    """Tests for get_diff_remote() function."""
+
+    def test_returns_diff_from_remote_branch(self):
+        """Should return diff output comparing remote branch to HEAD."""
+        diff_output = """diff --git a/file.py b/file.py
+index 123..456 100644
+--- a/file.py
++++ b/file.py
+@@ -1,5 +1,5 @@
+ def hello():
+-    print("old")
++    print("new")
+"""
+        with patch("lazypr.diff.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=0,
+                stdout=diff_output
+            )
+            result = get_diff_remote("main")
+            # Should call git diff origin/main...HEAD
+            mock_run.assert_called_once_with(
+                ["git", "diff", "origin/main...HEAD"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            assert result == diff_output
+
+    def test_uses_custom_remote(self):
+        """Should allow custom remote name."""
+        with patch("lazypr.diff.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(
+                returncode=0,
+                stdout="diff output"
+            )
+            get_diff_remote("main", remote="upstream")
+            mock_run.assert_called_once_with(
+                ["git", "diff", "upstream/main...HEAD"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+    def test_raises_error_when_remote_branch_missing(self):
+        """Should raise DiffError when remote branch doesn't exist."""
+        with patch("lazypr.diff.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(128, "git")
+            with pytest.raises(DiffError) as exc_info:
+                get_diff_remote("nonexistent-branch")
+            assert "origin/nonexistent-branch" in str(exc_info.value)
+
+
+class TestRebuildDiffWithFiles:
+    """Tests for rebuild_diff_with_files() function."""
+
+    def test_rebuilds_diff_with_allowed_files(self):
+        """Should include only files in the allowed list."""
+        diff = """diff --git a/file1.py b/file1.py
+index 123..456 100644
+--- a/file1.py
++++ b/file1.py
+@@ -1 +1 @@
+-old1
++new1
+
+diff --git a/file2.py b/file2.py
+index 789..abc 100644
+--- a/file2.py
++++ b/file2.py
+@@ -1 +1 @@
+-old2
++new2
+"""
+        result = rebuild_diff_with_files(diff, ["file1.py"])
+        assert "file1.py" in result
+        assert "file2.py" not in result
+        assert "new1" in result
+
+    def test_returns_empty_when_no_files_allowed(self):
+        """Should return empty string when no files match."""
+        diff = """diff --git a/file1.py b/file1.py
+index 123..456 100644
+--- a/file1.py
++++ b/file1.py
+@@ -1 +1 @@
+-old
++new
+"""
+        result = rebuild_diff_with_files(diff, ["other.py"])
+        assert result == ""
+
+    def test_returns_empty_for_empty_diff(self):
+        """Should return empty string for empty diff input."""
+        result = rebuild_diff_with_files("", ["file.py"])
         assert result == ""
