@@ -12,8 +12,16 @@ class ValidationError(Exception):
 
 
 def is_git_repo() -> bool:
-    """Check if we're in a git repository."""
-    return os.path.isdir(".git")
+    """Check if we're in a git repository (supports worktrees)."""
+    try:
+        subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            capture_output=True,
+            check=True
+        )
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
 
 
 def _git_command_succeeds(cmd: list[str]) -> bool:
