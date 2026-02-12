@@ -20,8 +20,8 @@ pip install -e ".[dev]"
 Set the following environment variables:
 
 - `LAZYPR_MODEL` - ZAI model identifier (e.g., "cerebras:zai-glm-4.7")
-- `LAZYPR_API_KEY` - API key for authentication (optional)
-- `LAZYPR_MAX_DIFF_LINES` - Maximum diff lines per file (default: 1000)
+- `$MODEL_PROVIDER_API_KEY` - API key for authentication (it depends on which model you're using)
+- `LAZYPR_MAX_DIFF_LINES` - Maximum diff lines per file before filtering out the file (default: 1000)
 
 **Note:** `LAZYPR_API_KEY` is optional. You can use provider-specific environment variables instead:
 - `CEREBRAS_API_KEY` for Cerebras models
