@@ -2,6 +2,8 @@
 
 AI-powered PR creation from git diffs. Automatically generates PR titles and descriptions using AI, then opens a browser for review.
 
+https://github.com/user-attachments/assets/a0df1b3b-5d84-431c-9501-5799c9358011
+
 ## Installation
 
 ```bash
