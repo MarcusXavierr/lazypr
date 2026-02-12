@@ -21,7 +21,7 @@ class TestMainWorkflow:
              patch("lazypr.has_remote", return_value=True), \
              patch("lazypr.get_current_branch", return_value="feature-branch"), \
              patch("lazypr.has_commits_ahead", return_value=True), \
-             patch("lazypr.get_diff", return_value="diff content"), \
+             patch("lazypr.get_diff_remote", return_value="diff content"), \
              patch("lazypr.parse_diff_lines", return_value={"file.py": 5}), \
              patch("lazypr.filter_large_files", return_value="filtered diff"), \
              patch("lazypr.load_ignore_patterns", return_value=[]), \

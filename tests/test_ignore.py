@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import patch, mock_open
 
-from lazypr import (
+from lazypr.ignore import (
     load_ignore_patterns,
     apply_ignore_patterns,
     matches_pattern,
@@ -14,7 +14,7 @@ class TestLoadIgnorePatterns:
 
     def test_loads_patterns_from_file(self):
         """Should load patterns from .lazyprignore file."""
-        with patch("src.lazypr.ignore.Path.exists") as mock_exists:
+        with patch("lazypr.ignore.Path.exists") as mock_exists:
             mock_exists.return_value = True
             with patch("builtins.open", mock_open(read_data="*.log\n__pycache__/\n*.tmp\n")):
                 patterns = load_ignore_patterns()
@@ -24,7 +24,7 @@ class TestLoadIgnorePatterns:
 
     def test_returns_empty_list_when_file_missing(self):
         """Should return empty list when .lazyprignore doesn't exist."""
-        with patch("src.lazypr.ignore.Path.exists") as mock_exists:
+        with patch("lazypr.ignore.Path.exists") as mock_exists:
             mock_exists.return_value = False
             patterns = load_ignore_patterns()
             assert patterns == []
@@ -37,7 +37,7 @@ class TestLoadIgnorePatterns:
 # Another comment
 __pycache__/
 """
-        with patch("src.lazypr.ignore.Path.exists") as mock_exists:
+        with patch("lazypr.ignore.Path.exists") as mock_exists:
             mock_exists.return_value = True
             with patch("builtins.open", mock_open(read_data=content)):
                 patterns = load_ignore_patterns()

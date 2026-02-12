@@ -10,6 +10,10 @@ class DiffError(Exception):
     pass
 
 
+# =============================================================================
+# PUBLIC API
+# =============================================================================
+
 def get_diff(base: str) -> str:
     """Get diff from base branch to current HEAD."""
     try:
@@ -24,30 +28,34 @@ def get_diff(base: str) -> str:
         raise DiffError(f"Failed to get diff from base branch '{base}'") from e
 
 
-def _is_diff_content_line(line: str) -> bool:
-    """Check if a line is part of a file's diff content (not a separator)."""
-    return (
-        line.startswith("index ") or
-        line.startswith("--- ") or
-        line.startswith("+++ ") or
-        line.startswith("@@") or
-        line.startswith("+") or
-        line.startswith("-") or
-        line.startswith(" ") or
-        line == "\\ No newline at end of file"
-    )
+def get_diff_remote(base: str, remote: str = "origin") -> str:
+    """Get diff from remote base branch to current HEAD.
 
+    This compares against the remote branch (e.g., origin/main) rather than
+    the local branch, ensuring we get the diff that will actually be pushed
+    to GitHub even if the local base branch is outdated.
 
-def _parse_hunk_line_count(line: str) -> int | None:
-    """Extract the number of added lines from a hunk header like '@@ -1,1000 +1,1000 @@'."""
-    # Match patterns like @@ -1,1000 +1,1000 @@ or @@ -1 +1 @@
-    # The number after the comma in the + section is the line count
-    match = re.match(r'@@ -\d+(?:,\d+)? \+\d+,?(\d+)? @@', line)
-    if match:
-        count_str = match.group(1)
-        if count_str:
-            return int(count_str)
-    return None
+    Args:
+        base: The base branch name (e.g., "main")
+        remote: The remote name (default: "origin")
+
+    Returns:
+        The diff output as a string
+
+    Raises:
+        DiffError: If the git command fails (e.g., remote branch doesn't exist)
+    """
+    remote_branch = f"{remote}/{base}"
+    try:
+        result = subprocess.run(
+            ["git", "diff", f"{remote_branch}...HEAD"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        raise DiffError(f"Failed to get diff from remote branch '{remote_branch}'") from e
 
 
 def parse_diff_lines(diff: str) -> dict[str, int]:
@@ -93,6 +101,108 @@ def parse_diff_lines(diff: str) -> dict[str, int]:
     return file_lines
 
 
+def filter_large_files(diff: str, max_lines: int) -> str:
+    """Remove files from diff that exceed max_lines."""
+    if not diff.strip():
+        return ""
+
+    file_lines = _get_effective_line_count(diff)
+    files_to_remove = {f for f, count in file_lines.items() if count > max_lines}
+
+    if not files_to_remove:
+        return diff
+
+    # Normalize line endings and split
+    lines = diff.replace("\r\n", "\n").split("\n")
+    # Remove trailing empty line if present for processing
+    has_trailing_newline = lines and lines[-1] == ""
+    if has_trailing_newline:
+        lines = lines[:-1]
+
+    # Collect lines for each file separately
+    files_in_diff = _collect_files_from_diff(lines)
+
+    # Rebuild diff without large files
+    filtered_lines: list[str] = []
+    for filename, file_lines_list in files_in_diff.items():
+        if filename not in files_to_remove:
+            filtered_lines.extend(file_lines_list)
+
+    if not filtered_lines:
+        return ""
+
+    return "\n".join(filtered_lines) + "\n"
+
+
+def rebuild_diff_with_files(diff: str, allowed_files: list[str]) -> str:
+    """Rebuild diff including only allowed files.
+
+    Args:
+        diff: The original diff string
+        allowed_files: List of file paths to include in the output
+
+    Returns:
+        A new diff string containing only the allowed files
+    """
+    allowed_set = set(allowed_files)
+    filtered_lines: list[str] = []
+    current_file: str | None = None
+    include_current = False
+
+    for line in diff.split("\n"):
+        if line.startswith("diff --git "):
+            match = re.match(r'diff --git a/(.*) b/(.*)', line)
+            if match:
+                current_file = match.group(2)
+                include_current = current_file in allowed_set
+            else:
+                include_current = False
+
+            if include_current:
+                filtered_lines.append(line)
+        elif include_current:
+            filtered_lines.append(line)
+
+    return "\n".join(filtered_lines).rstrip() + "\n" if filtered_lines else ""
+
+
+# =============================================================================
+# PRIVATE HELPERS
+# =============================================================================
+
+def _is_diff_content_line(line: str) -> bool:
+    """Check if a line is part of a file's diff content (not a separator).
+
+    Diff content lines include:
+    - Index lines: "index 123..456 100644"
+    - Source file markers: "--- a/file.py"
+    - Target file markers: "+++ b/file.py"
+    - Hunk headers: "@@ -1,5 +1,5 @@"
+    - Content lines starting with +, -, or space
+    - "No newline at end of file" marker
+    """
+    # Header lines that are part of diff content
+    if line.startswith(("index ", "--- ", "+++ ", "@@")):
+        return True
+    # Content change lines
+    if line.startswith(("+", "-", " ")):
+        return True
+    # Special marker for missing newline
+    return line == "\\ No newline at end of file"
+
+
+def _parse_hunk_line_count(line: str) -> int | None:
+    """Extract the number of added lines from a hunk header like '@@ -1,1000 +1,1000 @@'."""
+    # Match patterns like @@ -1,1000 +1,1000 @@ or @@ -1 +1 @@
+    # The number after the comma in the + section is the line count
+    match = re.match(r'@@ -\d+(?:,\d+)? \+\d+,?(\d+)? @@', line)
+    if match:
+        count_str = match.group(1)
+        if count_str:
+            return int(count_str)
+    return None
+
+
 def _get_effective_line_count(diff: str) -> dict[str, int]:
     """Get effective line count for filtering purposes.
 
@@ -114,6 +224,7 @@ def _get_effective_line_count(diff: str) -> dict[str, int]:
             match = re.match(r'diff --git a/(.*) b/(.*)', line)
             if match:
                 current_file = match.group(2)
+                # Type-safe: current_file is now confirmed to be str
                 effective_counts[current_file] = actual_counts.get(current_file, 0)
         elif current_file is not None and line.startswith("@@"):
             hunk_count = _parse_hunk_line_count(line)
@@ -123,25 +234,15 @@ def _get_effective_line_count(diff: str) -> dict[str, int]:
     return effective_counts
 
 
-def filter_large_files(diff: str, max_lines: int) -> str:
-    """Remove files from diff that exceed max_lines."""
-    if not diff.strip():
-        return ""
+def _collect_files_from_diff(lines: list[str]) -> dict[str, list[str]]:
+    """Collect lines for each file in a diff.
 
-    file_lines = _get_effective_line_count(diff)
-    files_to_remove = {f for f, count in file_lines.items() if count > max_lines}
+    Args:
+        lines: List of diff lines (without trailing empty line)
 
-    if not files_to_remove:
-        return diff
-
-    # Normalize line endings and split
-    lines = diff.replace("\r\n", "\n").split("\n")
-    # Remove trailing empty line if present for processing
-    has_trailing_newline = lines and lines[-1] == ""
-    if has_trailing_newline:
-        lines = lines[:-1]
-
-    # Collect lines for each file separately
+    Returns:
+        Dict mapping file paths to their diff lines
+    """
     files_in_diff: dict[str, list[str]] = {}
     current_file: str | None = None
 
@@ -157,37 +258,4 @@ def filter_large_files(diff: str, max_lines: int) -> str:
         elif current_file is not None:
             files_in_diff[current_file].append(line)
 
-    # Rebuild diff without large files
-    filtered_lines: list[str] = []
-    for filename, file_lines_list in files_in_diff.items():
-        if filename not in files_to_remove:
-            filtered_lines.extend(file_lines_list)
-
-    if not filtered_lines:
-        return ""
-
-    return "\n".join(filtered_lines) + "\n"
-
-
-def _rebuild_diff_with_files(diff: str, allowed_files: list[str]) -> str:
-    """Rebuild diff including only allowed files."""
-    allowed_set = set(allowed_files)
-    filtered_lines: list[str] = []
-    current_file: str | None = None
-    include_current = False
-
-    for line in diff.split("\n"):
-        if line.startswith("diff --git "):
-            match = re.match(r'diff --git a/(.*) b/(.*)', line)
-            if match:
-                current_file = match.group(2)
-                include_current = current_file in allowed_set
-            else:
-                include_current = False
-
-            if include_current:
-                filtered_lines.append(line)
-        elif include_current:
-            filtered_lines.append(line)
-
-    return "\n".join(filtered_lines).rstrip() + "\n" if filtered_lines else ""
+    return files_in_diff

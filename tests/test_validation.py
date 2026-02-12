@@ -18,15 +18,15 @@ class TestIsGitRepo:
     """Tests for is_git_repo() function."""
 
     def test_returns_true_when_in_git_repo(self):
-        """Should return True when .git directory exists."""
-        with patch("src.lazypr.validation.os.path.isdir") as mock_isdir:
-            mock_isdir.return_value = True
+        """Should return True when git command succeeds."""
+        with patch("src.lazypr.validation.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
             assert is_git_repo() is True
 
     def test_returns_false_when_not_in_git_repo(self):
-        """Should return False when .git directory doesn't exist."""
-        with patch("src.lazypr.validation.os.path.isdir") as mock_isdir:
-            mock_isdir.return_value = False
+        """Should return False when git command fails."""
+        with patch("src.lazypr.validation.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(128, "git")
             assert is_git_repo() is False
 
 
