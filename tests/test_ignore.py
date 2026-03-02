@@ -5,8 +5,8 @@ from unittest.mock import patch, mock_open
 from lazypr.ignore import (
     load_ignore_patterns,
     apply_ignore_patterns,
-    matches_pattern,
 )
+from lazypr.ignore import matches_pattern
 
 
 class TestLoadIgnorePatterns:
