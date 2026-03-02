@@ -18,15 +18,16 @@ from .validation import (
 
 from .diff import (
     DiffError,
-    get_diff,
+    get_diff_remote,
     parse_diff_lines,
     filter_large_files,
-    _rebuild_diff_with_files,
+    rebuild_diff_with_files,
 )
 
 from .ignore import (
     load_ignore_patterns,
     apply_ignore_patterns,
+    matches_pattern,
 )
 
 from .ai import (
@@ -97,9 +98,9 @@ async def create(base: str, language: str = "en") -> None:
     if not has_commits_ahead(base):
         raise ValidationError(f"No commits ahead of '{base}'")
 
-    # Get and filter diff
+    # Get and filter diff from remote base branch
     typer.echo(f"Getting diff from {base}...")
-    diff = get_diff(base)
+    diff = get_diff_remote(base)
 
     if not diff.strip():
         raise DiffError("No changes to include in PR")
@@ -115,7 +116,7 @@ async def create(base: str, language: str = "en") -> None:
 
     # Rebuild diff with only allowed files
     if set(file_lines.keys()) != set(filtered_files):
-        filtered_diff = _rebuild_diff_with_files(filtered_diff, filtered_files)
+        filtered_diff = rebuild_diff_with_files(filtered_diff, filtered_files)
 
     if not filtered_diff.strip():
         raise DiffError("No changes left after filtering")
