@@ -21,6 +21,10 @@ Set the following environment variables:
 - `LAZYPR_API_KEY` - API key for authentication (optional)
 - `LAZYPR_MAX_DIFF_LINES` - Maximum diff lines per file (default: 1000)
 
+### Config File
+
+You can also use a `.lazypr` file for configuration. See [.lazypr Config File](#lazypr-config-file) section below for details.
+
 **Note:** `LAZYPR_API_KEY` is optional. You can use provider-specific environment variables instead:
 - `ZAI_API_KEY` for Cerebras models
 - `OPENAI_API_KEY` for OpenAI models
@@ -41,6 +45,7 @@ lazypr create --base main
 - Validates git repository, gh CLI installation and authentication
 - Filters out files with large diffs (configurable via `LAZYPR_MAX_DIFF_LINES`)
 - Supports `.lazyprignore` file with gitignore-style patterns
+- Supports `.lazypr` config file for project-specific settings
 - Uses PydanticAI for structured AI output
 - Opens browser for PR review with `-w` flag
 
@@ -55,6 +60,30 @@ __pycache__/
 *.tmp
 !important.log  # Negation patterns work too
 ```
+
+## .lazypr Config File
+
+Create a `.lazypr` file in your repository root or home directory for configuration:
+
+```toml
+# GitHub token for authenticating with gh CLI
+github_token = "ghp_your_personal_access_token"
+```
+
+**Config precedence (highest to lowest):**
+1. `./.lazypr` - Project config (checked first)
+2. `~/.lazypr` - Global user config
+3. Environment variables (fallback)
+
+**Available options:**
+
+| Option | Description | Fallback |
+|--------|-------------|----------|
+| `github_token` | GitHub personal access token | `GITHUB_TOKEN` env var |
+
+When a `github_token` is found in a config file, lazypr will:
+1. Use that token for `gh` CLI commands
+2. Automatically add `.lazypr` to `.gitignore` (if not already present) to prevent committing secrets
 
 ## Building
 
