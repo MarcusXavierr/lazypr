@@ -1,10 +1,11 @@
 """LazyPR - AI-powered PR creation from git diffs."""
 
+import os
 import subprocess
 import typer
 from rich.console import Console
 
-from .config import get_max_diff_lines
+from .config import get_max_diff_lines, get_github_token
 
 from .validation import (
     ValidationError,
@@ -40,6 +41,14 @@ app = typer.Typer(help="AI-powered PR creation from git diffs")
 # PR creation function
 def create_pr(title: str, description: str, base: str) -> None:
     """Create a PR using gh CLI."""
+    # Get GitHub token from config or environment
+    token = get_github_token()
+
+    # Prepare environment for subprocess
+    env = os.environ.copy()
+    if token:
+        env["GITHUB_TOKEN"] = token
+
     try:
         subprocess.run(
             [
@@ -50,6 +59,7 @@ def create_pr(title: str, description: str, base: str) -> None:
                 "--body", description,
             ],
             check=True,
+            env=env,
         )
     except subprocess.CalledProcessError as e:
         raise ValidationError(f"Failed to create PR: {e}") from e

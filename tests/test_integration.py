@@ -1,8 +1,9 @@
 """Integration tests for the complete workflow."""
+import subprocess
 import pytest
 from unittest.mock import patch, MagicMock
 
-from lazypr import create, ValidationError
+from lazypr import create, create_pr, ValidationError
 
 
 class TestMainWorkflow:
@@ -71,3 +72,48 @@ class TestMainWorkflow:
              patch("lazypr.has_commits_ahead", return_value=False):
             with pytest.raises(ValidationError, match="commits ahead"):
                 await create(base="main")
+
+
+class TestConfigTokenIntegration:
+    """Tests for config token integration with PR creation."""
+
+    def test_create_pr_uses_config_token(self):
+        """Should pass GITHUB_TOKEN from config to subprocess environment."""
+        with patch("lazypr.get_github_token", return_value="config_token_123"):
+            with patch("subprocess.run") as mock_run:
+                mock_run.return_value = MagicMock(returncode=0)
+                create_pr("Test Title", "Test Description", "main")
+
+                # Verify subprocess was called with correct env
+                call_args = mock_run.call_args
+                env = call_args.kwargs.get("env")
+                assert env is not None
+                assert env["GITHUB_TOKEN"] == "config_token_123"
+
+    def test_create_pr_uses_env_when_no_config_token(self):
+        """Should use environment GITHUB_TOKEN when no config token."""
+        import os
+        with patch.dict(os.environ, {"GITHUB_TOKEN": "env_token_456"}):
+            with patch("lazypr.get_github_token", return_value="env_token_456"):
+                with patch("subprocess.run") as mock_run:
+                    mock_run.return_value = MagicMock(returncode=0)
+                    create_pr("Test Title", "Test Description", "main")
+
+                    call_args = mock_run.call_args
+                    env = call_args.kwargs.get("env")
+                    assert env is not None
+                    assert env["GITHUB_TOKEN"] == "env_token_456"
+
+    def test_create_pr_no_token_when_not_configured(self):
+        """Should not add GITHUB_TOKEN to env when not configured."""
+        with patch.dict("os.environ", {}, clear=True):  # Clear env for this test
+            with patch("lazypr.get_github_token", return_value=None):
+                with patch("subprocess.run") as mock_run:
+                    mock_run.return_value = MagicMock(returncode=0)
+                    create_pr("Test Title", "Test Description", "main")
+
+                    call_args = mock_run.call_args
+                    env = call_args.kwargs.get("env")
+                    # Should still have env, but no GITHUB_TOKEN added by us
+                    assert env is not None
+                    assert "GITHUB_TOKEN" not in env
