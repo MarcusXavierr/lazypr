@@ -92,3 +92,41 @@ def has_commits_ahead(base: str) -> bool:
         return len(result.stdout.strip()) > 0
     except subprocess.CalledProcessError:
         return False
+
+
+def is_branch_pushed_to_remote(branch: str) -> bool:
+    """Check if branch is fully pushed to its upstream (no unpushed commits)."""
+    try:
+        # First check if upstream exists
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", f"{branch}@{{upstream}}"],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            return False
+
+        # Check if there are any unpushed commits (local commits not on remote)
+        result = subprocess.run(
+            ["git", "rev-list", f"{branch}@{{upstream}}..{branch}"],
+            capture_output=True,
+            text=True,
+        )
+        # If there's output, there are unpushed commits
+        return len(result.stdout.strip()) == 0
+    except subprocess.CalledProcessError:
+        return False
+
+
+def push_branch_to_remote(branch: str, remote: str = "origin") -> None:
+    """Push branch to remote with upstream tracking."""
+    try:
+        subprocess.run(
+            ["git", "push", "-u", remote, branch],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.strip() if e.stderr else str(e)
+        raise ValidationError(f"Failed to push branch: {error_msg}") from e
