@@ -23,28 +23,39 @@ class TestLoadConfigFile:
             result = load_config_file(Path("/fake/.lazypr"))
             assert result == {}
 
-    def test_parses_toml_correctly(self):
-        """Should parse valid TOML and return dict."""
-        toml_content = 'github_token = "ghp_test_token_123"\n'
+    def test_parses_env_format_correctly(self):
+        """Should parse valid .env format and return dict."""
+        env_content = 'GITHUB_TOKEN=ghp_test_token_123\n'
         with patch("lazypr.config_file.Path.exists") as mock_exists:
             mock_exists.return_value = True
-            with patch("builtins.open", mock_open(read_data=toml_content)):
-                with patch("lazypr.config_file.tomllib.load") as mock_load:
-                    mock_load.return_value = {"github_token": "ghp_test_token_123"}
-                    result = load_config_file(Path("/fake/.lazypr"))
-                    assert result == {"github_token": "ghp_test_token_123"}
+            with patch("builtins.open", mock_open(read_data=env_content)):
+                result = load_config_file(Path("/fake/.lazypr"))
+                assert result == {"GITHUB_TOKEN": "ghp_test_token_123"}
 
-    def test_warns_on_invalid_toml(self, capsys):
-        """Should print warning and return empty dict on invalid TOML."""
+    def test_handles_comments_and_empty_lines(self):
+        """Should skip comments and empty lines."""
+        env_content = """# This is a comment
+GITHUB_TOKEN=token123
+
+# Another comment
+ANOTHER_KEY=value
+"""
         with patch("lazypr.config_file.Path.exists") as mock_exists:
             mock_exists.return_value = True
-            with patch("builtins.open", mock_open(read_data="invalid toml {{")):
-                with patch("lazypr.config_file.tomllib.load") as mock_load:
-                    mock_load.side_effect = Exception("TOML parse error")
-                    result = load_config_file(Path("/fake/.lazypr"))
-                    assert result == {}
-                    captured = capsys.readouterr()
-                    assert "Warning" in captured.err or "warning" in captured.err.lower()
+            with patch("builtins.open", mock_open(read_data=env_content)):
+                result = load_config_file(Path("/fake/.lazypr"))
+                assert result == {"GITHUB_TOKEN": "token123", "ANOTHER_KEY": "value"}
+
+    def test_handles_quoted_values(self):
+        """Should strip quotes from values."""
+        env_content = '''GITHUB_TOKEN="quoted_token"
+ANOTHER='single_quoted'
+'''
+        with patch("lazypr.config_file.Path.exists") as mock_exists:
+            mock_exists.return_value = True
+            with patch("builtins.open", mock_open(read_data=env_content)):
+                result = load_config_file(Path("/fake/.lazypr"))
+                assert result == {"GITHUB_TOKEN": "quoted_token", "ANOTHER": "single_quoted"}
 
 
 class TestGetMergedConfig:
@@ -54,21 +65,21 @@ class TestGetMergedConfig:
         """Should return global config when project config missing."""
         with patch("lazypr.config_file.load_config_file") as mock_load:
             mock_load.side_effect = [
-                {"github_token": "global_token"},  # global
+                {"GITHUB_TOKEN": "global_token"},  # global
                 {},  # project
             ]
             result = get_merged_config()
-            assert result == {"github_token": "global_token"}
+            assert result == {"GITHUB_TOKEN": "global_token"}
 
     def test_project_overrides_global(self):
         """Project config should override global config."""
         with patch("lazypr.config_file.load_config_file") as mock_load:
             mock_load.side_effect = [
-                {"github_token": "global_token"},  # global
-                {"github_token": "project_token"},  # project
+                {"GITHUB_TOKEN": "global_token"},  # global
+                {"GITHUB_TOKEN": "project_token"},  # project
             ]
             result = get_merged_config()
-            assert result == {"github_token": "project_token"}
+            assert result == {"GITHUB_TOKEN": "project_token"}
 
     def test_both_missing(self):
         """Should return empty dict when both configs missing."""
@@ -81,12 +92,12 @@ class TestGetMergedConfig:
         """Project config can add keys not in global."""
         with patch("lazypr.config_file.load_config_file") as mock_load:
             mock_load.side_effect = [
-                {"github_token": "global_token"},  # global
-                {"other_key": "value"},  # project
+                {"GITHUB_TOKEN": "global_token"},  # global
+                {"OTHER_KEY": "value"},  # project
             ]
             result = get_merged_config()
             # Project config merges with global (update() behavior)
-            assert result == {"github_token": "global_token", "other_key": "value"}
+            assert result == {"GITHUB_TOKEN": "global_token", "OTHER_KEY": "value"}
 
 
 class TestEnsureInGitignore:
@@ -161,7 +172,7 @@ class TestGetGithubToken:
             with patch("lazypr.config_file.load_config_file") as mock_load:
                 # Note: get_github_token() checks project first, then global
                 mock_load.side_effect = [
-                    {"github_token": "project_token"},  # project config (checked first)
+                    {"GITHUB_TOKEN": "project_token"},  # project config (checked first)
                     {},  # global config (checked second, won't be reached)
                 ]
                 with patch("lazypr.config_file.ensure_in_gitignore") as mock_gitignore:
@@ -175,7 +186,7 @@ class TestGetGithubToken:
             with patch("lazypr.config_file.load_config_file") as mock_load:
                 # Both configs checked, global has token
                 mock_load.side_effect = [
-                    {"github_token": "global_token"},  # global config
+                    {"GITHUB_TOKEN": "global_token"},  # global config
                     {},  # project config (empty)
                 ]
                 with patch("lazypr.config_file.ensure_in_gitignore") as mock_gitignore:
@@ -203,6 +214,6 @@ class TestGetGithubToken:
         """Empty string in config should fall back to env var."""
         with patch.dict(os.environ, {"GITHUB_TOKEN": "env_token"}):
             with patch("lazypr.config_file.load_config_file") as mock_load:
-                mock_load.return_value = {"github_token": ""}
+                mock_load.return_value = {"GITHUB_TOKEN": ""}
                 result = get_github_token()
                 assert result == "env_token"
