@@ -11,6 +11,8 @@ from lazypr import (
     get_current_branch,
     has_commits_ahead,
     ValidationError,
+    is_branch_pushed_to_remote,
+    push_branch_to_remote,
 )
 
 
@@ -121,3 +123,57 @@ class TestHasCommitsAhead:
                 stdout=""
             )
             assert has_commits_ahead("main") is False
+
+
+class TestIsBranchPushedToRemote:
+    """Tests for is_branch_pushed_to_remote() function."""
+
+    def test_returns_true_when_branch_fully_pushed(self):
+        """Should return True when branch has upstream and no unpushed commits."""
+        with patch("src.lazypr.validation.subprocess.run") as mock_run:
+            # First call: upstream exists, Second call: no unpushed commits
+            mock_run.side_effect = [
+                MagicMock(returncode=0, stdout="origin/feature\n"),  # upstream check
+                MagicMock(returncode=0, stdout=""),  # no unpushed commits
+            ]
+            assert is_branch_pushed_to_remote("feature") is True
+
+    def test_returns_false_when_no_upstream(self):
+        """Should return False when branch has no upstream."""
+        with patch("src.lazypr.validation.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=128, stderr="fatal: no upstream\n")
+            assert is_branch_pushed_to_remote("feature") is False
+
+    def test_returns_false_when_has_unpushed_commits(self):
+        """Should return False when branch has unpushed commits."""
+        with patch("src.lazypr.validation.subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                MagicMock(returncode=0, stdout="origin/feature\n"),  # upstream exists
+                MagicMock(returncode=0, stdout="abc123\ndef456\n"),  # has unpushed commits
+            ]
+            assert is_branch_pushed_to_remote("feature") is False
+
+
+class TestPushBranchToRemote:
+    """Tests for push_branch_to_remote() function."""
+
+    def test_pushes_branch_with_upstream(self):
+        """Should push branch to remote with upstream tracking."""
+        with patch("src.lazypr.validation.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="")
+            push_branch_to_remote("feature-branch", "origin")
+            mock_run.assert_called_once_with(
+                ["git", "push", "-u", "origin", "feature-branch"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+    def test_raises_error_when_push_fails(self):
+        """Should raise ValidationError when push fails."""
+        with patch("src.lazypr.validation.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(
+                128, "git", stderr="Permission denied"
+            )
+            with pytest.raises(ValidationError, match="Failed to push branch"):
+                push_branch_to_remote("feature-branch", "origin")

@@ -15,6 +15,8 @@ from .validation import (
     has_remote,
     get_current_branch,
     has_commits_ahead,
+    is_branch_pushed_to_remote,
+    push_branch_to_remote,
 )
 
 from .diff import (
@@ -106,6 +108,15 @@ async def create(base: str, language: str = "en") -> None:
 
     current_branch = get_current_branch()
     typer.echo(f"Current branch: {current_branch}")
+
+    # Check if branch is pushed to remote
+    if not is_branch_pushed_to_remote(current_branch):
+        if not typer.confirm(f"Branch '{current_branch}' is not pushed to remote. Push now?"):
+            typer.echo("Aborted. Branch must be pushed to create a PR.")
+            raise typer.Exit(1)
+        typer.echo(f"Pushing to origin/{current_branch}...")
+        push_branch_to_remote(current_branch, "origin")
+        typer.echo("Push successful.")
 
     if not has_commits_ahead(base):
         raise ValidationError(f"No commits ahead of '{base}'")

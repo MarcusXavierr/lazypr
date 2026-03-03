@@ -1,6 +1,7 @@
 """Integration tests for the complete workflow."""
 import subprocess
 import pytest
+import typer
 from unittest.mock import patch, MagicMock
 
 from lazypr import create, create_pr, ValidationError
@@ -21,6 +22,7 @@ class TestMainWorkflow:
              patch("lazypr.gh_is_authenticated", return_value=True), \
              patch("lazypr.has_remote", return_value=True), \
              patch("lazypr.get_current_branch", return_value="feature-branch"), \
+             patch("lazypr.is_branch_pushed_to_remote", return_value=True), \
              patch("lazypr.has_commits_ahead", return_value=True), \
              patch("lazypr.get_diff", return_value="diff content"), \
              patch("lazypr.parse_diff_lines", return_value={"file.py": 5}), \
@@ -69,9 +71,70 @@ class TestMainWorkflow:
              patch("lazypr.gh_is_authenticated", return_value=True), \
              patch("lazypr.has_remote", return_value=True), \
              patch("lazypr.get_current_branch", return_value="feature"), \
+             patch("lazypr.is_branch_pushed_to_remote", return_value=True), \
              patch("lazypr.has_commits_ahead", return_value=False):
             with pytest.raises(ValidationError, match="commits ahead"):
                 await create(base="main")
+
+    @pytest.mark.asyncio
+    async def test_prompts_to_push_branch_when_not_on_remote(self):
+        """Should prompt user to push branch when not on remote."""
+        mock_pr_content = MagicMock()
+        mock_pr_content.title = "Test PR"
+        mock_pr_content.description = "Test description"
+
+        with patch("lazypr.is_git_repo", return_value=True), \
+             patch("lazypr.has_gh_cli", return_value=True), \
+             patch("lazypr.gh_is_authenticated", return_value=True), \
+             patch("lazypr.has_remote", return_value=True), \
+             patch("lazypr.get_current_branch", return_value="feature-branch"), \
+             patch("lazypr.is_branch_pushed_to_remote", return_value=False) as mock_check, \
+             patch("lazypr.push_branch_to_remote") as mock_push, \
+             patch("lazypr.has_commits_ahead", return_value=True), \
+             patch("lazypr.get_diff", return_value="diff content"), \
+             patch("lazypr.parse_diff_lines", return_value={"file.py": 5}), \
+             patch("lazypr.filter_large_files", return_value="filtered diff"), \
+             patch("lazypr.load_ignore_patterns", return_value=[]), \
+             patch("lazypr.apply_ignore_patterns", return_value=["file.py"]), \
+             patch("lazypr.generate_pr_content", return_value=mock_pr_content), \
+             patch("lazypr.create_pr") as mock_create_pr, \
+             patch("typer.confirm", return_value=True) as mock_confirm:
+
+            await create(base="main")
+            mock_check.assert_called_once_with("feature-branch")
+            mock_confirm.assert_called_once()
+            mock_push.assert_called_once_with("feature-branch", "origin")
+            mock_create_pr.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_exits_when_user_declines_push(self):
+        """Should exit gracefully when user declines to push."""
+        mock_pr_content = MagicMock()
+        mock_pr_content.title = "Test PR"
+        mock_pr_content.description = "Test description"
+
+        with patch("lazypr.is_git_repo", return_value=True), \
+             patch("lazypr.has_gh_cli", return_value=True), \
+             patch("lazypr.gh_is_authenticated", return_value=True), \
+             patch("lazypr.has_remote", return_value=True), \
+             patch("lazypr.get_current_branch", return_value="feature-branch"), \
+             patch("lazypr.is_branch_pushed_to_remote", return_value=False), \
+             patch("lazypr.push_branch_to_remote") as mock_push, \
+             patch("lazypr.has_commits_ahead", return_value=True), \
+             patch("lazypr.get_diff", return_value="diff content"), \
+             patch("lazypr.parse_diff_lines", return_value={"file.py": 5}), \
+             patch("lazypr.filter_large_files", return_value="filtered diff"), \
+             patch("lazypr.load_ignore_patterns", return_value=[]), \
+             patch("lazypr.apply_ignore_patterns", return_value=["file.py"]), \
+             patch("lazypr.generate_pr_content", return_value=mock_pr_content), \
+             patch("lazypr.create_pr") as mock_create_pr, \
+             patch("typer.confirm", return_value=False) as mock_confirm:
+
+            with pytest.raises(typer.Exit):
+                await create(base="main")
+            mock_confirm.assert_called_once()
+            mock_push.assert_not_called()
+            mock_create_pr.assert_not_called()
 
 
 class TestConfigTokenIntegration:
