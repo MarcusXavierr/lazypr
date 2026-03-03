@@ -36,3 +36,4 @@ htmlcov/
 # Local development
 *.log
 .DS_Store
+.lazypr

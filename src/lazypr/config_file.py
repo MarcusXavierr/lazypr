@@ -1,19 +1,11 @@
 """Config file loading and management for LazyPR."""
 
-import sys
 from pathlib import Path
 from typing import Optional
 
-# tomllib is in stdlib for Python 3.11+
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    # For older Python versions, we'd need tomli, but we'll assume 3.11+
-    import tomllib
-
 
 def load_config_file(path: Path) -> dict:
-    """Load and parse a TOML config file.
+    """Load and parse a .env format config file.
 
     Args:
         path: Path to the config file.
@@ -25,14 +17,34 @@ def load_config_file(path: Path) -> dict:
     if not path.exists():
         return {}
 
+    result = {}
     try:
-        with open(path, "rb") as f:
-            return tomllib.load(f)
+        with open(path, "r") as f:
+            for line in f:
+                line = line.strip()
+                # Skip empty lines and comments
+                if not line or line.startswith("#"):
+                    continue
+                # Parse KEY=value
+                if "=" in line:
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+                    value = value.strip()
+                    # Remove optional quotes
+                    if (
+                        len(value) >= 2
+                        and value[0] == value[-1]
+                        and value[0] in ('"', "'")
+                    ):
+                        value = value[1:-1]
+                    result[key] = value
     except Exception as e:
         import sys
 
         print(f"Warning: Failed to parse config file {path}: {e}", file=sys.stderr)
         return {}
+
+    return result
 
 
 def get_merged_config() -> dict:
@@ -99,8 +111,8 @@ def get_github_token() -> Optional[str]:
     """Get GitHub token from config files or environment.
 
     Precedence (highest to lowest):
-    1. Project config (./.lazypr) github_token
-    2. Global config (~/.lazypr) github_token
+    1. Project config (./.lazypr) GITHUB_TOKEN
+    2. Global config (~/.lazypr) GITHUB_TOKEN
     3. GITHUB_TOKEN environment variable
 
     If token is found in a config file, ensure_in_gitignore() is called
@@ -116,17 +128,17 @@ def get_github_token() -> Optional[str]:
     project_path = Path(".lazypr")
 
     project_config = load_config_file(project_path)
-    if "github_token" in project_config and project_config["github_token"]:
+    if "GITHUB_TOKEN" in project_config and project_config["GITHUB_TOKEN"]:
         ensure_in_gitignore()
-        return project_config["github_token"]
+        return project_config["GITHUB_TOKEN"]
 
     global_config = load_config_file(global_path)
-    if "github_token" in global_config and global_config["github_token"]:
+    if "GITHUB_TOKEN" in global_config and global_config["GITHUB_TOKEN"]:
         # For global config, we still want to ensure project .gitignore has it
         # in case they copy the config file to project
         if project_path.exists():
             ensure_in_gitignore()
-        return global_config["github_token"]
+        return global_config["GITHUB_TOKEN"]
 
     # Fall back to environment variable
     env_token = os.environ.get("GITHUB_TOKEN")

@@ -61,9 +61,12 @@ def create_pr(title: str, description: str, base: str) -> None:
             ],
             check=True,
             env=env,
+            capture_output=True,
+            text=True,
         )
     except subprocess.CalledProcessError as e:
-        raise ValidationError(f"Failed to create PR: {e}") from e
+        error_msg = e.stderr.strip() if e.stderr else str(e)
+        raise ValidationError(f"Failed to create PR: {error_msg}") from e
 
 
 # Available languages for PR generation

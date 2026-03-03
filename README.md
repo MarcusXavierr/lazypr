@@ -215,9 +215,9 @@ __pycache__/
 
 Create a `.lazypr` file in your repository root or home directory for configuration:
 
-```toml
+```env
 # GitHub token for authenticating with gh CLI
-github_token = "ghp_your_personal_access_token"
+GITHUB_TOKEN=ghp_your_personal_access_token
 ```
 
 **Config precedence (highest to lowest):**
@@ -229,9 +229,9 @@ github_token = "ghp_your_personal_access_token"
 
 | Option | Description | Fallback |
 |--------|-------------|----------|
-| `github_token` | GitHub personal access token | `GITHUB_TOKEN` env var |
+| `GITHUB_TOKEN` | GitHub personal access token | `GITHUB_TOKEN` env var |
 
-When a `github_token` is found in a config file, lazypr will:
+When a `GITHUB_TOKEN` is found in a config file, lazypr will:
 1. Use that token for `gh` CLI commands
 2. Automatically add `.lazypr` to `.gitignore` (if not already present) to prevent committing secrets
 

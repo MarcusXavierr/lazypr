@@ -29,8 +29,8 @@ def get_github_token() -> Optional[str]:
     """Get GitHub token from config files or environment variable.
 
     Precedence (highest to lowest):
-    1. Project config (./.lazypr) github_token
-    2. Global config (~/.lazypr) github_token
+    1. Project config (./.lazypr) GITHUB_TOKEN
+    2. Global config (~/.lazypr) GITHUB_TOKEN
     3. GITHUB_TOKEN environment variable
 
     Returns:
