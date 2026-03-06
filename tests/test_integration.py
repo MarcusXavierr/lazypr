@@ -91,7 +91,7 @@ class TestMainWorkflow:
              patch("lazypr.is_branch_pushed_to_remote", return_value=False) as mock_check, \
              patch("lazypr.push_branch_to_remote") as mock_push, \
              patch("lazypr.has_commits_ahead", return_value=True), \
-             patch("lazypr.get_diff", return_value="diff content"), \
+             patch("lazypr.get_diff_remote", return_value="diff content"), \
              patch("lazypr.parse_diff_lines", return_value={"file.py": 5}), \
              patch("lazypr.filter_large_files", return_value="filtered diff"), \
              patch("lazypr.load_ignore_patterns", return_value=[]), \
@@ -121,7 +121,7 @@ class TestMainWorkflow:
              patch("lazypr.is_branch_pushed_to_remote", return_value=False), \
              patch("lazypr.push_branch_to_remote") as mock_push, \
              patch("lazypr.has_commits_ahead", return_value=True), \
-             patch("lazypr.get_diff", return_value="diff content"), \
+             patch("lazypr.get_diff_remote", return_value="diff content"), \
              patch("lazypr.parse_diff_lines", return_value={"file.py": 5}), \
              patch("lazypr.filter_large_files", return_value="filtered diff"), \
              patch("lazypr.load_ignore_patterns", return_value=[]), \

@@ -35,27 +35,55 @@ def get_diff_remote(base: str, remote: str = "origin") -> str:
     the local branch, ensuring we get the diff that will actually be pushed
     to GitHub even if the local base branch is outdated.
 
+    If the specified remote does not have the base branch, tries all available
+    remotes before falling back to a local diff.
+
     Args:
         base: The base branch name (e.g., "main")
-        remote: The remote name (default: "origin")
+        remote: The preferred remote name (default: "origin")
 
     Returns:
         The diff output as a string
 
     Raises:
-        DiffError: If the git command fails (e.g., remote branch doesn't exist)
+        DiffError: If no suitable branch reference is found
     """
-    remote_branch = f"{remote}/{base}"
+    candidates = _remote_candidates(base, preferred=remote)
+    for ref in candidates:
+        try:
+            result = subprocess.run(
+                ["git", "diff", f"{ref}...HEAD"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return result.stdout
+        except subprocess.CalledProcessError:
+            continue
+    raise DiffError(f"Failed to get diff: no remote tracking branch found for '{base}'")
+
+
+def _remote_candidates(base: str, preferred: str) -> list[str]:
+    """Return candidate remote refs to diff against, preferred remote first."""
     try:
         result = subprocess.run(
-            ["git", "diff", f"{remote_branch}...HEAD"],
-            capture_output=True,
-            text=True,
-            check=True
+            ["git", "branch", "-r"],
+            capture_output=True, text=True, check=True
         )
-        return result.stdout
-    except subprocess.CalledProcessError as e:
-        raise DiffError(f"Failed to get diff from remote branch '{remote_branch}'") from e
+        remote_branches = [b.strip() for b in result.stdout.splitlines()]
+    except subprocess.CalledProcessError:
+        remote_branches = []
+
+    preferred_ref = f"{preferred}/{base}"
+    candidates: list[str] = []
+    if preferred_ref in remote_branches:
+        candidates.append(preferred_ref)
+    for branch in remote_branches:
+        if branch.endswith(f"/{base}") and branch != preferred_ref:
+            candidates.append(branch)
+    # fallback: local branch name
+    candidates.append(base)
+    return candidates
 
 
 def parse_diff_lines(diff: str) -> dict[str, int]:
