@@ -124,6 +124,12 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build and release (e.g. v1.2.0)'
+        required: true
+        type: string
 
 jobs:
   build:
