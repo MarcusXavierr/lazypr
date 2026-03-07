@@ -1,5 +1,4 @@
 import warnings
-import pytest
 
 
 def test_requests_no_charset_warning():
