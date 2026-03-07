@@ -98,3 +98,15 @@ class TestGeneratePrContent:
             prompt = call_args[0][0] if call_args[0] else call_args[1].get("prompt", "")
             assert "Portuguese" in prompt
             assert "respond entirely in" in prompt
+
+    @pytest.mark.asyncio
+    async def test_prompt_forbids_conventional_commits_in_title(self):
+        """Prompt must explicitly instruct AI not to use conventional commits format in title."""
+        mock_agent = MagicMock()
+        mock_agent.run = AsyncMock()
+
+        with patch("lazypr.ai.create_pr_agent", return_value=mock_agent):
+            await generate_pr_content("some diff")
+            call_args = mock_agent.run.call_args
+            prompt = call_args[0][0] if call_args[0] else call_args[1].get("prompt", "")
+            assert "conventional commit" in prompt.lower()
