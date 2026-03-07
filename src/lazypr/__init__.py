@@ -43,7 +43,7 @@ app = typer.Typer(help="AI-powered PR creation from git diffs")
 
 
 # PR creation function
-def create_pr(title: str, description: str, base: str) -> None:
+def create_pr(title: str, description: str, base: str, web: bool = True) -> None:
     """Create a PR using gh CLI."""
     # Get GitHub token from config or environment
     token = get_github_token()
@@ -53,20 +53,14 @@ def create_pr(title: str, description: str, base: str) -> None:
     if token:
         env["GITHUB_TOKEN"] = token
 
+    cmd = ["gh", "pr", "create"]
+    if web:
+        cmd.append("-w")
+    cmd += ["--base", base, "--title", title, "--body", description]
+
     try:
         subprocess.run(
-            [
-                "gh",
-                "pr",
-                "create",
-                "-w",
-                "--base",
-                base,
-                "--title",
-                title,
-                "--body",
-                description,
-            ],
+            cmd,
             check=True,
             env=env,
             capture_output=True,
@@ -91,14 +85,26 @@ def create_cmd(
         help="Language for the PR title and description (en, pt, es, fr, de, zh, ja, ko, it, ru)",
         case_sensitive=False,
     ),
+    yes: bool = typer.Option(
+        False,
+        "-y",
+        help="Create PR directly in terminal without opening browser. Auto-confirms branch push.",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help="Show generated title and description without creating the PR.",
+    ),
 ) -> None:
     """Create a PR with AI-generated title and description."""
     import asyncio
 
-    asyncio.run(create(base, lang))
+    asyncio.run(create(base, lang, yes=yes, dry_run=dry_run))
 
 
-async def create(base: str, language: str = "en") -> None:
+async def create(
+    base: str, language: str = "en", yes: bool = False, dry_run: bool = False
+) -> None:
     """Async implementation of create command."""
     # Validation checks
     if not is_git_repo():
@@ -117,15 +123,20 @@ async def create(base: str, language: str = "en") -> None:
     typer.echo(f"Current branch: {current_branch}")
 
     # Check if branch is pushed to remote
-    if not is_branch_pushed_to_remote(current_branch):
-        if not typer.confirm(
-            f"Branch '{current_branch}' is not pushed to remote. Push now?"
-        ):
-            typer.echo("Aborted. Branch must be pushed to create a PR.")
-            raise typer.Exit(1)
-        typer.echo(f"Pushing to origin/{current_branch}...")
-        push_branch_to_remote(current_branch, "origin")
-        typer.echo("Push successful.")
+    if not dry_run and not is_branch_pushed_to_remote(current_branch):
+        if yes:
+            typer.echo(f"Pushing to origin/{current_branch}...")
+            push_branch_to_remote(current_branch, "origin")
+            typer.echo("Push successful.")
+        else:
+            if not typer.confirm(
+                f"Branch '{current_branch}' is not pushed to remote. Push now?"
+            ):
+                typer.echo("Aborted. Branch must be pushed to create a PR.")
+                raise typer.Exit(1)
+            typer.echo(f"Pushing to origin/{current_branch}...")
+            push_branch_to_remote(current_branch, "origin")
+            typer.echo("Push successful.")
 
     if not has_commits_ahead(base):
         raise ValidationError(f"No commits ahead of '{base}'")
@@ -159,9 +170,15 @@ async def create(base: str, language: str = "en") -> None:
     typer.echo(f"\nTitle: {pr_content.title}")
     typer.echo(f"Description:\n{pr_content.description}\n")
 
+    if dry_run:
+        return
+
     # Create PR
-    typer.echo("Creating PR and opening browser...")
-    create_pr(pr_content.title, pr_content.description, base)
+    if yes:
+        typer.echo("Creating PR...")
+    else:
+        typer.echo("Creating PR and opening browser...")
+    create_pr(pr_content.title, pr_content.description, base, web=not yes)
 
 
 def main() -> None:
