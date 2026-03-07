@@ -7,12 +7,14 @@ import subprocess
 # Custom exceptions
 class DiffError(Exception):
     """Raised when diff operations fail."""
+
     pass
 
 
 # =============================================================================
 # PUBLIC API
 # =============================================================================
+
 
 def get_diff(base: str) -> str:
     """Get diff from base branch to current HEAD."""
@@ -21,7 +23,7 @@ def get_diff(base: str) -> str:
             ["git", "diff", f"{base}...HEAD"],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         return result.stdout
     except subprocess.CalledProcessError as e:
@@ -58,7 +60,7 @@ def get_diff_remote(base: str, remote: str = "origin") -> str:
                 ["git", "diff", f"{ref}...HEAD"],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
             return result.stdout
         except subprocess.CalledProcessError:
@@ -70,8 +72,7 @@ def _remote_candidates(base: str, preferred: str) -> list[str]:
     """Return candidate remote refs to diff against, preferred remote first."""
     try:
         result = subprocess.run(
-            ["git", "branch", "-r"],
-            capture_output=True, text=True, check=True
+            ["git", "branch", "-r"], capture_output=True, text=True, check=True
         )
         remote_branches = [b.strip() for b in result.stdout.splitlines()]
     except subprocess.CalledProcessError:
@@ -125,7 +126,7 @@ def parse_diff_lines(diff: str) -> dict[str, int]:
             if current_file is not None:
                 file_lines[current_file] = current_count
             # Extract new file path
-            match = re.match(r'diff --git a/(.*) b/(.*)', line)
+            match = re.match(r"diff --git a/(.*) b/(.*)", line)
             if match:
                 current_file = match.group(2)
                 current_count = 1  # Count the diff --git line
@@ -199,7 +200,7 @@ def rebuild_diff_with_files(diff: str, allowed_files: list[str]) -> str:
 
     for line in diff.split("\n"):
         if line.startswith("diff --git "):
-            match = re.match(r'diff --git a/(.*) b/(.*)', line)
+            match = re.match(r"diff --git a/(.*) b/(.*)", line)
             if match:
                 current_file = match.group(2)
                 include_current = current_file in allowed_set
@@ -217,6 +218,7 @@ def rebuild_diff_with_files(diff: str, allowed_files: list[str]) -> str:
 # =============================================================================
 # PRIVATE HELPERS
 # =============================================================================
+
 
 def _is_diff_content_line(line: str) -> bool:
     """Check if a line is part of a file's diff content (not a separator).
@@ -243,7 +245,7 @@ def _parse_hunk_line_count(line: str) -> int | None:
     """Extract the number of added lines from a hunk header like '@@ -1,1000 +1,1000 @@'."""
     # Match patterns like @@ -1,1000 +1,1000 @@ or @@ -1 +1 @@
     # The number after the comma in the + section is the line count
-    match = re.match(r'@@ -\d+(?:,\d+)? \+\d+,?(\d+)? @@', line)
+    match = re.match(r"@@ -\d+(?:,\d+)? \+\d+,?(\d+)? @@", line)
     if match:
         count_str = match.group(1)
         if count_str:
@@ -269,14 +271,16 @@ def _get_effective_line_count(diff: str) -> dict[str, int]:
 
     for line in lines:
         if line.startswith("diff --git "):
-            match = re.match(r'diff --git a/(.*) b/(.*)', line)
+            match = re.match(r"diff --git a/(.*) b/(.*)", line)
             if match:
                 current_file = match.group(2)
                 # Type-safe: current_file is now confirmed to be str
                 effective_counts[current_file] = actual_counts.get(current_file, 0)
         elif current_file is not None and line.startswith("@@"):
             hunk_count = _parse_hunk_line_count(line)
-            if hunk_count is not None and hunk_count > effective_counts.get(current_file, 0):
+            if hunk_count is not None and hunk_count > effective_counts.get(
+                current_file, 0
+            ):
                 effective_counts[current_file] = hunk_count
 
     return effective_counts
@@ -297,7 +301,7 @@ def _collect_files_from_diff(lines: list[str]) -> dict[str, list[str]]:
     for line in lines:
         if line.startswith("diff --git "):
             # Extract file path
-            match = re.match(r'diff --git a/(.*) b/(.*)', line)
+            match = re.match(r"diff --git a/(.*) b/(.*)", line)
             if match:
                 current_file = match.group(2)
                 files_in_diff[current_file] = [line]

@@ -1,4 +1,5 @@
 """Tests for .lazyprignore pattern matching."""
+
 import pytest
 from unittest.mock import patch, mock_open
 
@@ -16,7 +17,9 @@ class TestLoadIgnorePatterns:
         """Should load patterns from .lazyprignore file."""
         with patch("lazypr.ignore.Path.exists") as mock_exists:
             mock_exists.return_value = True
-            with patch("builtins.open", mock_open(read_data="*.log\n__pycache__/\n*.tmp\n")):
+            with patch(
+                "builtins.open", mock_open(read_data="*.log\n__pycache__/\n*.tmp\n")
+            ):
                 patterns = load_ignore_patterns()
                 assert "*.log" in patterns
                 assert "__pycache__/" in patterns
@@ -50,16 +53,19 @@ __pycache__/
 class TestMatchesPattern:
     """Tests for matches_pattern() function."""
 
-    @pytest.mark.parametrize("pattern,filepath,expected", [
-        ("*.log", "debug.log", True),
-        ("*.log", "debug.txt", False),
-        ("__pycache__/", "__pycache__/file.pyc", True),
-        ("__pycache__/", "src/__pycache__/file.pyc", True),
-        ("temp/**", "temp/file.txt", True),
-        ("temp/**", "temp/subdir/file.txt", True),
-        ("*.pyc", "file.pyc", True),
-        ("*.pyc", "file.py", False),
-    ])
+    @pytest.mark.parametrize(
+        "pattern,filepath,expected",
+        [
+            ("*.log", "debug.log", True),
+            ("*.log", "debug.txt", False),
+            ("__pycache__/", "__pycache__/file.pyc", True),
+            ("__pycache__/", "src/__pycache__/file.pyc", True),
+            ("temp/**", "temp/file.txt", True),
+            ("temp/**", "temp/subdir/file.txt", True),
+            ("*.pyc", "file.pyc", True),
+            ("*.pyc", "file.py", False),
+        ],
+    )
     def test_pattern_matching(self, pattern, filepath, expected):
         """Should correctly match glob patterns to file paths."""
         assert matches_pattern(pattern, filepath) == expected

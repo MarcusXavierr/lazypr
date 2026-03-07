@@ -1,4 +1,5 @@
 """Tests for AI generation (with mocked LLM calls)."""
+
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 
@@ -9,7 +10,9 @@ from lazypr.ai import (
 )
 
 
-@pytest.mark.skip("Skipping pydantic_ai.Agent mock tests - requires complex patching of third-party library")
+@pytest.mark.skip(
+    "Skipping pydantic_ai.Agent mock tests - requires complex patching of third-party library"
+)
 class TestCreatePrAgent:
     """Tests for create_pr_agent() function."""
 
@@ -18,8 +21,10 @@ class TestCreatePrAgent:
         with patch("src.lazypr.config.get_model_name") as mock_model:
             mock_model.return_value = "cerebras:zai-glm-4.7"
             from lazypr.ai import Agent
-            with patch.object(Agent, '__init__', autospec=True) as mock_agent_class:
+
+            with patch.object(Agent, "__init__", autospec=True) as mock_agent_class:
                 from lazypr import create_pr_agent
+
                 create_pr_agent()
                 mock_agent_class.assert_called_once()
 
@@ -30,8 +35,10 @@ class TestCreatePrAgent:
             with patch("src.lazypr.config.get_api_key") as mock_api_key:
                 mock_api_key.return_value = None
                 from lazypr.ai import Agent
-                with patch.object(Agent, '__init__', autospec=True) as mock_agent_class:
+
+                with patch.object(Agent, "__init__", autospec=True) as mock_agent_class:
                     from lazypr import create_pr_agent
+
                     create_pr_agent()
                     mock_agent_class.assert_called_once()
 
@@ -41,6 +48,7 @@ class TestCreatePrAgent:
             mock_env.return_value = None
             with pytest.raises(AIError, match="LAZYPR_MODEL"):
                 from lazypr import create_pr_agent
+
                 create_pr_agent()
 
 
@@ -53,7 +61,7 @@ class TestGeneratePrContent:
         mock_result = MagicMock()
         mock_result.output = PRContent(
             title="Add user authentication",
-            description="This PR adds OAuth2 authentication flow."
+            description="This PR adds OAuth2 authentication flow.",
         )
 
         mock_agent = MagicMock()
@@ -75,7 +83,7 @@ class TestGeneratePrContent:
         with patch("lazypr.ai.create_pr_agent", return_value=mock_agent):
             await generate_pr_content(diff_content)
             call_args = mock_agent.run.call_args
-            prompt = call_args[0][0] if call_args[0] else call_args[1].get('prompt', '')
+            prompt = call_args[0][0] if call_args[0] else call_args[1].get("prompt", "")
             assert diff_content in prompt
 
     @pytest.mark.asyncio
@@ -87,6 +95,6 @@ class TestGeneratePrContent:
         with patch("lazypr.ai.create_pr_agent", return_value=mock_agent):
             await generate_pr_content("some diff", language="pt")
             call_args = mock_agent.run.call_args
-            prompt = call_args[0][0] if call_args[0] else call_args[1].get('prompt', '')
+            prompt = call_args[0][0] if call_args[0] else call_args[1].get("prompt", "")
             assert "Portuguese" in prompt
             assert "respond entirely in" in prompt
