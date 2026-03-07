@@ -33,6 +33,8 @@ a = Analysis(
         'pydantic_ai.providers.ollama',
         # pydantic internals lost by reflection
         'pydantic._internal._generate_schema',
+        # requests character detection (optional dep not auto-detected)
+        'charset_normalizer',
     ],
     hookspath=[],
     hooksconfig={},
@@ -55,12 +57,10 @@ exe = EXE(
     strip=True,
     upx=True,
     upx_exclude=[],
-    runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    onefile=True,
 )
