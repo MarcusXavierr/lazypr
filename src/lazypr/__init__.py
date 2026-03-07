@@ -180,6 +180,10 @@ async def create(
         typer.echo("Creating PR and opening browser...")
     create_pr(pr_content.title, pr_content.description, base, web=not yes)
 
+    if yes:
+        typer.echo("Opening PR in browser...")
+        subprocess.run(["gh", "pr", "view", "--web"], check=True)
+
 
 def main() -> None:
     """Entry point for the CLI."""
