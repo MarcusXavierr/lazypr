@@ -37,7 +37,7 @@ class TestMainWorkflow:
 
             await create(base="main")
             mock_create_pr.assert_called_once_with(
-                "Test PR", "Test description", "main"
+                "Test PR", "Test description", "main", web=True
             )
 
     @pytest.mark.asyncio
@@ -147,6 +147,156 @@ class TestMainWorkflow:
                 await create(base="main")
             mock_confirm.assert_called_once()
             mock_push.assert_not_called()
+            mock_create_pr.assert_not_called()
+
+
+class TestYesFlag:
+    """Tests for the -y flag behavior."""
+
+    @pytest.mark.asyncio
+    async def test_yes_flag_auto_pushes_without_prompting(self):
+        """Should push branch automatically without confirmation when -y is used."""
+        mock_pr_content = MagicMock()
+        mock_pr_content.title = "Test PR"
+        mock_pr_content.description = "Test description"
+
+        with (
+            patch("lazypr.is_git_repo", return_value=True),
+            patch("lazypr.has_gh_cli", return_value=True),
+            patch("lazypr.gh_is_authenticated", return_value=True),
+            patch("lazypr.has_remote", return_value=True),
+            patch("lazypr.get_current_branch", return_value="feature-branch"),
+            patch("lazypr.is_branch_pushed_to_remote", return_value=False),
+            patch("lazypr.push_branch_to_remote") as mock_push,
+            patch("lazypr.has_commits_ahead", return_value=True),
+            patch("lazypr.get_diff_remote", return_value="diff content"),
+            patch("lazypr.parse_diff_lines", return_value={"file.py": 5}),
+            patch("lazypr.filter_large_files", return_value="filtered diff"),
+            patch("lazypr.load_ignore_patterns", return_value=[]),
+            patch("lazypr.apply_ignore_patterns", return_value=["file.py"]),
+            patch("lazypr.generate_pr_content", return_value=mock_pr_content),
+            patch("lazypr.create_pr") as mock_create_pr,
+            patch("typer.confirm") as mock_confirm,
+        ):
+            await create(base="main", yes=True)
+            mock_confirm.assert_not_called()
+            mock_push.assert_called_once_with("feature-branch", "origin")
+            mock_create_pr.assert_called_once_with(
+                "Test PR", "Test description", "main", web=False
+            )
+
+    @pytest.mark.asyncio
+    async def test_yes_flag_creates_pr_without_browser(self):
+        """Should call create_pr with web=False when -y is used."""
+        mock_pr_content = MagicMock()
+        mock_pr_content.title = "Test PR"
+        mock_pr_content.description = "Test description"
+
+        with (
+            patch("lazypr.is_git_repo", return_value=True),
+            patch("lazypr.has_gh_cli", return_value=True),
+            patch("lazypr.gh_is_authenticated", return_value=True),
+            patch("lazypr.has_remote", return_value=True),
+            patch("lazypr.get_current_branch", return_value="feature-branch"),
+            patch("lazypr.is_branch_pushed_to_remote", return_value=True),
+            patch("lazypr.has_commits_ahead", return_value=True),
+            patch("lazypr.get_diff_remote", return_value="diff content"),
+            patch("lazypr.parse_diff_lines", return_value={"file.py": 5}),
+            patch("lazypr.filter_large_files", return_value="filtered diff"),
+            patch("lazypr.load_ignore_patterns", return_value=[]),
+            patch("lazypr.apply_ignore_patterns", return_value=["file.py"]),
+            patch("lazypr.generate_pr_content", return_value=mock_pr_content),
+            patch("lazypr.create_pr") as mock_create_pr,
+        ):
+            await create(base="main", yes=True)
+            mock_create_pr.assert_called_once_with(
+                "Test PR", "Test description", "main", web=False
+            )
+
+
+class TestDryRunFlag:
+    """Tests for the --dry-run flag behavior."""
+
+    @pytest.mark.asyncio
+    async def test_dry_run_prints_content_without_creating_pr(self):
+        """Should print title and description without calling create_pr."""
+        mock_pr_content = MagicMock()
+        mock_pr_content.title = "Test PR"
+        mock_pr_content.description = "Test description"
+
+        with (
+            patch("lazypr.is_git_repo", return_value=True),
+            patch("lazypr.has_gh_cli", return_value=True),
+            patch("lazypr.gh_is_authenticated", return_value=True),
+            patch("lazypr.has_remote", return_value=True),
+            patch("lazypr.get_current_branch", return_value="feature-branch"),
+            patch("lazypr.is_branch_pushed_to_remote", return_value=True),
+            patch("lazypr.has_commits_ahead", return_value=True),
+            patch("lazypr.get_diff_remote", return_value="diff content"),
+            patch("lazypr.parse_diff_lines", return_value={"file.py": 5}),
+            patch("lazypr.filter_large_files", return_value="filtered diff"),
+            patch("lazypr.load_ignore_patterns", return_value=[]),
+            patch("lazypr.apply_ignore_patterns", return_value=["file.py"]),
+            patch("lazypr.generate_pr_content", return_value=mock_pr_content),
+            patch("lazypr.create_pr") as mock_create_pr,
+        ):
+            await create(base="main", dry_run=True)
+            mock_create_pr.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_dry_run_skips_push_check(self):
+        """Should not push or prompt even if branch is not on remote."""
+        mock_pr_content = MagicMock()
+        mock_pr_content.title = "Test PR"
+        mock_pr_content.description = "Test description"
+
+        with (
+            patch("lazypr.is_git_repo", return_value=True),
+            patch("lazypr.has_gh_cli", return_value=True),
+            patch("lazypr.gh_is_authenticated", return_value=True),
+            patch("lazypr.has_remote", return_value=True),
+            patch("lazypr.get_current_branch", return_value="feature-branch"),
+            patch("lazypr.is_branch_pushed_to_remote", return_value=False),
+            patch("lazypr.push_branch_to_remote") as mock_push,
+            patch("lazypr.has_commits_ahead", return_value=True),
+            patch("lazypr.get_diff_remote", return_value="diff content"),
+            patch("lazypr.parse_diff_lines", return_value={"file.py": 5}),
+            patch("lazypr.filter_large_files", return_value="filtered diff"),
+            patch("lazypr.load_ignore_patterns", return_value=[]),
+            patch("lazypr.apply_ignore_patterns", return_value=["file.py"]),
+            patch("lazypr.generate_pr_content", return_value=mock_pr_content),
+            patch("lazypr.create_pr") as mock_create_pr,
+            patch("typer.confirm") as mock_confirm,
+        ):
+            await create(base="main", dry_run=True)
+            mock_confirm.assert_not_called()
+            mock_push.assert_not_called()
+            mock_create_pr.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_dry_run_takes_precedence_over_yes(self):
+        """Should not create PR even when both --dry-run and -y are passed."""
+        mock_pr_content = MagicMock()
+        mock_pr_content.title = "Test PR"
+        mock_pr_content.description = "Test description"
+
+        with (
+            patch("lazypr.is_git_repo", return_value=True),
+            patch("lazypr.has_gh_cli", return_value=True),
+            patch("lazypr.gh_is_authenticated", return_value=True),
+            patch("lazypr.has_remote", return_value=True),
+            patch("lazypr.get_current_branch", return_value="feature-branch"),
+            patch("lazypr.is_branch_pushed_to_remote", return_value=True),
+            patch("lazypr.has_commits_ahead", return_value=True),
+            patch("lazypr.get_diff_remote", return_value="diff content"),
+            patch("lazypr.parse_diff_lines", return_value={"file.py": 5}),
+            patch("lazypr.filter_large_files", return_value="filtered diff"),
+            patch("lazypr.load_ignore_patterns", return_value=[]),
+            patch("lazypr.apply_ignore_patterns", return_value=["file.py"]),
+            patch("lazypr.generate_pr_content", return_value=mock_pr_content),
+            patch("lazypr.create_pr") as mock_create_pr,
+        ):
+            await create(base="main", yes=True, dry_run=True)
             mock_create_pr.assert_not_called()
 
 
