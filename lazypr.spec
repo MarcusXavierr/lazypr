@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from PyInstaller.utils.hooks import copy_metadata
+from PyInstaller.utils.hooks import copy_metadata, collect_all
 
 # Bundle package metadata for packages that call importlib.metadata.version()
 pkg_metadata = (
@@ -11,11 +11,14 @@ pkg_metadata = (
     copy_metadata('pydantic_core')
 )
 
+# Collect all parts of charset_normalizer (Python + C extensions + data)
+cn_datas, cn_binaries, cn_hiddenimports = collect_all('charset_normalizer')
+
 a = Analysis(
     ['src/lazypr/__main__.py'],
     pathex=['src'],
-    binaries=[],
-    datas=pkg_metadata,
+    binaries=cn_binaries,
+    datas=pkg_metadata + cn_datas,
     hiddenimports=[
         # pydantic-ai model backends
         'pydantic_ai.models.openai',
@@ -33,9 +36,7 @@ a = Analysis(
         'pydantic_ai.providers.ollama',
         # pydantic internals lost by reflection
         'pydantic._internal._generate_schema',
-        # requests character detection (optional dep not auto-detected)
-        'charset_normalizer',
-    ],
+    ] + cn_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
