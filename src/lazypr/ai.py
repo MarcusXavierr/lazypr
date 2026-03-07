@@ -103,6 +103,9 @@ Only if there are important technical decisions:
 - Be concise but complete
 - Write thinking of the reviewer (don't assume they know all the context)
 
+## Output Format
+Use `##` markdown headings for each section title in the description (e.g. `## Summary`, `## Main Changes`).
+
 ## What NOT to do
 - Don't list every modified file (the diff already shows that)
 - Don't use generic phrases like "code improvements"
