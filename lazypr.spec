@@ -33,6 +33,8 @@ a = Analysis(
         'pydantic_ai.providers.ollama',
         # pydantic internals lost by reflection
         'pydantic._internal._generate_schema',
+        # requests character detection (optional dep not auto-detected)
+        'charset_normalizer',
     ],
     hookspath=[],
     hooksconfig={},
@@ -46,21 +48,28 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='lazypr',
     debug=False,
     bootloader_ignore_signals=False,
     strip=True,
     upx=True,
     upx_exclude=[],
-    runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    onefile=True,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.datas,
+    strip=True,
+    upx=True,
+    upx_exclude=[],
+    name='lazypr',
 )

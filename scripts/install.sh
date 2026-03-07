@@ -35,15 +35,21 @@ if [[ -z "$VERSION" ]]; then
     exit 1
 fi
 
-BINARY_URL="https://github.com/$REPO/releases/download/$VERSION/lazypr-$PLATFORM"
+TARBALL_URL="https://github.com/$REPO/releases/download/$VERSION/lazypr-$PLATFORM.tar.gz"
+SHARE_DIR="${LAZYPR_SHARE_DIR:-$HOME/.local/share}"
 
 echo "Installing lazypr $VERSION for $PLATFORM..."
 
-mkdir -p "$INSTALL_DIR"
-curl -fsSL "$BINARY_URL" -o "$INSTALL_DIR/lazypr"
-chmod +x "$INSTALL_DIR/lazypr"
+# Remove existing bundle if present (clean upgrade)
+rm -rf "$SHARE_DIR/lazypr"
 
-echo "Installed: $INSTALL_DIR/lazypr"
+mkdir -p "$SHARE_DIR"
+curl -fsSL "$TARBALL_URL" | tar -xz -C "$SHARE_DIR"
+
+mkdir -p "$INSTALL_DIR"
+ln -sf "$SHARE_DIR/lazypr/lazypr" "$INSTALL_DIR/lazypr"
+
+echo "Installed: $INSTALL_DIR/lazypr -> $SHARE_DIR/lazypr/lazypr"
 
 if ! echo "$PATH" | grep -q "$INSTALL_DIR"; then
     echo ""
