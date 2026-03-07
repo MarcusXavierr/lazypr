@@ -113,6 +113,7 @@ Use `##` markdown headings for each section title in the description (e.g. `## S
 - Don't use generic phrases like "code improvements"
 - Don't copy commit messages directly
 - Don't be overly technical in the summary
+- Don't use conventional commits format in the title (no `fix:`, `feat:`, `chore:` prefixes)
 
 ---
 

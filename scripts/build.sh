@@ -15,4 +15,4 @@ pyinstaller lazypr.spec --distpath dist --noconfirm
 echo ""
 echo "Build complete: dist/lazypr"
 echo "Testing binary..."
-./dist/lazypr --help
+./dist/lazypr/lazypr --help
