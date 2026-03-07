@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# GitHub CLI (gh) Installer Script
+# LazyPR Installer Script
+# Installs GitHub CLI (gh) and the lazypr binary
 # Supports: macOS, Ubuntu/Debian, Fedora/RHEL/CentOS, Alpine, Arch Linux
 # Can be run via: curl -fsSL https://raw.githubusercontent.com/MarcusXavierr/lazypr/main/setup.sh | bash
 
@@ -34,9 +35,9 @@ log_error() {
 check_existing() {
     if command -v gh &> /dev/null; then
         log_success "GitHub CLI (gh) is already installed: $(gh --version | head -n1)"
-        prompt_auth
-        exit 0
+        return 0
     fi
+    return 1
 }
 
 # Detect operating system
@@ -185,6 +186,62 @@ get_latest_version() {
     curl -fsSL "https://api.github.com/repos/cli/cli/releases/latest" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4 | sed 's/^v//'
 }
 
+# Install lazypr binary from GitHub releases
+install_lazypr() {
+    local repo="MarcusXavierr/lazypr"
+    local install_dir="${LAZYPR_INSTALL_DIR:-$HOME/.local/bin}"
+    local share_dir="${LAZYPR_SHARE_DIR:-$HOME/.local/share}"
+
+    log_info "Installing lazypr..."
+
+    # Detect platform
+    local os arch platform
+    os=$(uname -s)
+    arch=$(uname -m)
+
+    case "$os" in
+        Linux)  platform="linux-x86_64" ;;
+        Darwin)
+            case "$arch" in
+                arm64)  platform="macos-arm64" ;;
+                x86_64) platform="macos-x86_64" ;;
+                *) log_error "Unsupported macOS arch: $arch"; exit 1 ;;
+            esac ;;
+        *) log_error "Unsupported OS: $os"; exit 1 ;;
+    esac
+
+    # Get latest lazypr version
+    local lazypr_version
+    lazypr_version=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
+        | grep '"tag_name"' \
+        | cut -d'"' -f4)
+
+    if [[ -z "$lazypr_version" ]]; then
+        log_error "Could not fetch latest lazypr version from GitHub."
+        exit 1
+    fi
+
+    local tarball_url="https://github.com/$repo/releases/download/$lazypr_version/lazypr-$platform.tar.gz"
+
+    log_info "Installing lazypr $lazypr_version for $platform..."
+
+    # Remove existing bundle (clean upgrade)
+    rm -rf "$share_dir/lazypr"
+    mkdir -p "$share_dir"
+    curl -fsSL "$tarball_url" | tar -xz -C "$share_dir"
+
+    mkdir -p "$install_dir"
+    ln -sf "$share_dir/lazypr/lazypr" "$install_dir/lazypr"
+
+    log_success "lazypr installed: $install_dir/lazypr"
+
+    if ! echo "$PATH" | grep -q "$install_dir"; then
+        log_warning "lazypr was installed to $install_dir which is not in your PATH."
+        echo "  Add this to your shell config (~/.zshrc or ~/.bashrc):"
+        echo "    export PATH=\"$install_dir:\$PATH\""
+    fi
+}
+
 # Prompt user to run gh auth login
 prompt_auth() {
     echo ""
@@ -211,12 +268,17 @@ prompt_auth() {
 # Main installation logic
 main() {
     echo "========================================"
-    echo "  GitHub CLI (gh) Installer"
+    echo "  LazyPR Installer"
     echo "========================================"
     echo ""
 
-    # Check if already installed
-    check_existing
+    # Check if gh is already installed; if so, skip to lazypr install
+    if check_existing; then
+        prompt_auth
+        echo ""
+        install_lazypr
+        exit 0
+    fi
 
     # Get the latest version
     log_info "Fetching latest version..."
@@ -261,16 +323,20 @@ main() {
             ;;
     esac
 
-    # Verify installation
+    # Verify gh installation
     echo ""
     if command -v gh &> /dev/null; then
         log_success "GitHub CLI installed successfully!"
         gh --version
         prompt_auth
     else
-        log_error "Installation failed. Please check the error messages above."
+        log_error "gh installation failed. Please check the error messages above."
         exit 1
     fi
+
+    # Install lazypr
+    echo ""
+    install_lazypr
 }
 
 # Run main function
