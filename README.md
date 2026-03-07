@@ -163,7 +163,7 @@ Make sure Ollama is installed and the model is downloaded before using local mod
 export LAZYPR_MODEL="openai:gpt-4.1"
 export OPENAI_API_KEY="sk-..."
 
-lazypr create --base main
+lazypr --base main
 ```
 
 ## Features
