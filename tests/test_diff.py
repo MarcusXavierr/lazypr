@@ -1,7 +1,7 @@
 """Tests for diff filtering functionality."""
 import subprocess
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, call
 
 from lazypr.diff import (
     get_diff,
@@ -165,29 +165,33 @@ index 123..456 100644
 +    print("new")
 """
         branch_list = MagicMock(returncode=0, stdout="  origin/main\n")
+        fetch_result = MagicMock(returncode=0, stdout="")
         diff_result = MagicMock(returncode=0, stdout=diff_output)
-        with patch("lazypr.diff.subprocess.run", side_effect=[branch_list, diff_result]) as mock_run:
+        with patch("lazypr.diff.subprocess.run", side_effect=[branch_list, fetch_result, diff_result]) as mock_run:
             result = get_diff_remote("main")
-            # Should call git diff origin/main...HEAD
-            mock_run.assert_called_with(
+            # Third call must be the diff
+            diff_call = mock_run.call_args_list[2]
+            assert diff_call == call(
                 ["git", "diff", "origin/main...HEAD"],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
             assert result == diff_output
 
     def test_uses_custom_remote(self):
         """Should allow custom remote name."""
         branch_list = MagicMock(returncode=0, stdout="  upstream/main\n")
+        fetch_result = MagicMock(returncode=0, stdout="")
         diff_result = MagicMock(returncode=0, stdout="diff output")
-        with patch("lazypr.diff.subprocess.run", side_effect=[branch_list, diff_result]) as mock_run:
+        with patch("lazypr.diff.subprocess.run", side_effect=[branch_list, fetch_result, diff_result]) as mock_run:
             result = get_diff_remote("main", remote="upstream")
-            mock_run.assert_called_with(
+            diff_call = mock_run.call_args_list[2]
+            assert diff_call == call(
                 ["git", "diff", "upstream/main...HEAD"],
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
             assert result == "diff output"
 
@@ -198,6 +202,49 @@ index 123..456 100644
             with pytest.raises(DiffError) as exc_info:
                 get_diff_remote("nonexistent-branch")
             assert "nonexistent-branch" in str(exc_info.value)
+
+    def test_fetches_remote_before_diffing(self):
+        """Should fetch from remote before running diff to get up-to-date tracking ref."""
+        diff_output = "diff --git a/file.py b/file.py\n"
+        branch_list = MagicMock(returncode=0, stdout="  origin/main\n")
+        fetch_result = MagicMock(returncode=0, stdout="")
+        diff_result = MagicMock(returncode=0, stdout=diff_output)
+        with patch("lazypr.diff.subprocess.run", side_effect=[branch_list, fetch_result, diff_result]) as mock_run:
+            result = get_diff_remote("main")
+            # Second call must be the fetch
+            fetch_call = mock_run.call_args_list[1]
+            assert fetch_call == call(
+                ["git", "fetch", "origin", "main"],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            assert result == diff_output
+
+    def test_fetch_failure_is_ignored(self):
+        """Should proceed with cached tracking ref when fetch fails (e.g. offline)."""
+        diff_output = "diff --git a/file.py b/file.py\n"
+        branch_list = MagicMock(returncode=0, stdout="  origin/main\n")
+        diff_result = MagicMock(returncode=0, stdout=diff_output)
+        with patch("lazypr.diff.subprocess.run", side_effect=[
+            branch_list,
+            subprocess.CalledProcessError(1, "git fetch"),
+            diff_result,
+        ]):
+            result = get_diff_remote("main")
+            assert result == diff_output
+
+    def test_local_fallback_does_not_fetch(self):
+        """Should not attempt a fetch when falling back to local branch ref."""
+        diff_output = "diff --git a/file.py b/file.py\n"
+        # No remote branches available → falls back to local 'main'
+        branch_list = MagicMock(returncode=0, stdout="")
+        diff_result = MagicMock(returncode=0, stdout=diff_output)
+        with patch("lazypr.diff.subprocess.run", side_effect=[branch_list, diff_result]) as mock_run:
+            result = get_diff_remote("main")
+            # Only two calls: branch_list + diff (no fetch for local ref)
+            assert mock_run.call_count == 2
+            assert result == diff_output
 
 
 class TestRebuildDiffWithFiles:

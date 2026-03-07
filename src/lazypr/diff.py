@@ -50,6 +50,9 @@ def get_diff_remote(base: str, remote: str = "origin") -> str:
     """
     candidates = _remote_candidates(base, preferred=remote)
     for ref in candidates:
+        if "/" in ref:
+            remote_name = ref.split("/")[0]
+            _fetch_remote_branch(remote_name, base)
         try:
             result = subprocess.run(
                 ["git", "diff", f"{ref}...HEAD"],
@@ -84,6 +87,23 @@ def _remote_candidates(base: str, preferred: str) -> list[str]:
     # fallback: local branch name
     candidates.append(base)
     return candidates
+
+
+def _fetch_remote_branch(remote: str, branch: str) -> None:
+    """Fetch a branch from a remote to update the local tracking ref.
+
+    Silently ignores errors so callers proceed with the cached ref when
+    offline or when the remote does not have the branch.
+    """
+    try:
+        subprocess.run(
+            ["git", "fetch", remote, branch],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError:
+        pass
 
 
 def parse_diff_lines(diff: str) -> dict[str, int]:
