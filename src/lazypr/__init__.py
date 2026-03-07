@@ -41,6 +41,7 @@ from .ai import (
 console = Console()
 app = typer.Typer(help="AI-powered PR creation from git diffs")
 
+
 # PR creation function
 def create_pr(title: str, description: str, base: str) -> None:
     """Create a PR using gh CLI."""
@@ -55,11 +56,16 @@ def create_pr(title: str, description: str, base: str) -> None:
     try:
         subprocess.run(
             [
-                "gh", "pr", "create",
+                "gh",
+                "pr",
+                "create",
                 "-w",
-                "--base", base,
-                "--title", title,
-                "--body", description,
+                "--base",
+                base,
+                "--title",
+                title,
+                "--body",
+                description,
             ],
             check=True,
             env=env,
@@ -112,7 +118,9 @@ async def create(base: str, language: str = "en") -> None:
 
     # Check if branch is pushed to remote
     if not is_branch_pushed_to_remote(current_branch):
-        if not typer.confirm(f"Branch '{current_branch}' is not pushed to remote. Push now?"):
+        if not typer.confirm(
+            f"Branch '{current_branch}' is not pushed to remote. Push now?"
+        ):
             typer.echo("Aborted. Branch must be pushed to create a PR.")
             raise typer.Exit(1)
         typer.echo(f"Pushing to origin/{current_branch}...")

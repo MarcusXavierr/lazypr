@@ -1,4 +1,5 @@
 """Tests for git and gh CLI validation."""
+
 import subprocess
 import pytest
 from unittest.mock import patch, MagicMock
@@ -70,10 +71,7 @@ class TestHasRemote:
     def test_returns_true_when_remote_exists(self):
         """Should return True when origin remote is configured."""
         with patch("src.lazypr.validation.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout="origin\n"
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout="origin\n")
             assert has_remote("origin") is True
 
     def test_returns_false_when_remote_missing(self):
@@ -89,10 +87,7 @@ class TestGetCurrentBranch:
     def test_returns_branch_name(self):
         """Should return current branch name."""
         with patch("src.lazypr.validation.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout="feature-branch\n"
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout="feature-branch\n")
             assert get_current_branch() == "feature-branch"
 
     def test_raises_error_when_not_in_repo(self):
@@ -109,19 +104,13 @@ class TestHasCommitsAhead:
     def test_returns_true_when_commits_ahead(self):
         """Should return True when branch has commits ahead of base."""
         with patch("src.lazypr.validation.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout="abc123\ndef456\n"
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout="abc123\ndef456\n")
             assert has_commits_ahead("main") is True
 
     def test_returns_false_when_no_commits(self):
         """Should return False when no commits ahead of base."""
         with patch("src.lazypr.validation.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout=""
-            )
+            mock_run.return_value = MagicMock(returncode=0, stdout="")
             assert has_commits_ahead("main") is False
 
 
@@ -141,7 +130,9 @@ class TestIsBranchPushedToRemote:
     def test_returns_false_when_no_upstream(self):
         """Should return False when branch has no upstream."""
         with patch("src.lazypr.validation.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=128, stderr="fatal: no upstream\n")
+            mock_run.return_value = MagicMock(
+                returncode=128, stderr="fatal: no upstream\n"
+            )
             assert is_branch_pushed_to_remote("feature") is False
 
     def test_returns_false_when_has_unpushed_commits(self):
@@ -149,7 +140,9 @@ class TestIsBranchPushedToRemote:
         with patch("src.lazypr.validation.subprocess.run") as mock_run:
             mock_run.side_effect = [
                 MagicMock(returncode=0, stdout="origin/feature\n"),  # upstream exists
-                MagicMock(returncode=0, stdout="abc123\ndef456\n"),  # has unpushed commits
+                MagicMock(
+                    returncode=0, stdout="abc123\ndef456\n"
+                ),  # has unpushed commits
             ]
             assert is_branch_pushed_to_remote("feature") is False
 

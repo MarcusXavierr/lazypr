@@ -1,4 +1,5 @@
 """Tests for config file loading and management."""
+
 import os
 from pathlib import Path
 from unittest.mock import patch, mock_open, MagicMock, call
@@ -25,7 +26,7 @@ class TestLoadConfigFile:
 
     def test_parses_env_format_correctly(self):
         """Should parse valid .env format and return dict."""
-        env_content = 'GITHUB_TOKEN=ghp_test_token_123\n'
+        env_content = "GITHUB_TOKEN=ghp_test_token_123\n"
         with patch("lazypr.config_file.Path.exists") as mock_exists:
             mock_exists.return_value = True
             with patch("builtins.open", mock_open(read_data=env_content)):
@@ -48,14 +49,17 @@ ANOTHER_KEY=value
 
     def test_handles_quoted_values(self):
         """Should strip quotes from values."""
-        env_content = '''GITHUB_TOKEN="quoted_token"
+        env_content = """GITHUB_TOKEN="quoted_token"
 ANOTHER='single_quoted'
-'''
+"""
         with patch("lazypr.config_file.Path.exists") as mock_exists:
             mock_exists.return_value = True
             with patch("builtins.open", mock_open(read_data=env_content)):
                 result = load_config_file(Path("/fake/.lazypr"))
-                assert result == {"GITHUB_TOKEN": "quoted_token", "ANOTHER": "single_quoted"}
+                assert result == {
+                    "GITHUB_TOKEN": "quoted_token",
+                    "ANOTHER": "single_quoted",
+                }
 
 
 class TestGetMergedConfig:
@@ -111,9 +115,11 @@ class TestEnsureInGitignore:
         mock_file.__exit__ = MagicMock(return_value=False)
         mock_file.read.return_value = gitignore_content
 
-        with patch("lazypr.config_file.Path.exists", return_value=True), \
-             patch("lazypr.config_file.Path.read_text", return_value=gitignore_content), \
-             patch("builtins.open", return_value=mock_file):
+        with (
+            patch("lazypr.config_file.Path.exists", return_value=True),
+            patch("lazypr.config_file.Path.read_text", return_value=gitignore_content),
+            patch("builtins.open", return_value=mock_file),
+        ):
             ensure_in_gitignore()
             # Should have written the updated content
             mock_file.write.assert_called_once()

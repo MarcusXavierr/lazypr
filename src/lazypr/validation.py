@@ -8,6 +8,7 @@ import subprocess
 # Custom exceptions
 class ValidationError(Exception):
     """Raised when validation fails."""
+
     pass
 
 
@@ -15,9 +16,7 @@ def is_git_repo() -> bool:
     """Check if we're in a git repository (supports worktrees)."""
     try:
         subprocess.run(
-            ["git", "rev-parse", "--git-dir"],
-            capture_output=True,
-            check=True
+            ["git", "rev-parse", "--git-dir"], capture_output=True, check=True
         )
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
@@ -41,11 +40,7 @@ def has_gh_cli() -> bool:
 def gh_is_authenticated() -> bool:
     """Check if gh CLI is authenticated."""
     try:
-        subprocess.run(
-            ["gh", "auth", "status"],
-            capture_output=True,
-            check=True
-        )
+        subprocess.run(["gh", "auth", "status"], capture_output=True, check=True)
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
@@ -55,10 +50,7 @@ def has_remote(remote: str = "origin") -> bool:
     """Check if a remote is configured."""
     try:
         result = subprocess.run(
-            ["git", "remote"],
-            capture_output=True,
-            text=True,
-            check=True
+            ["git", "remote"], capture_output=True, text=True, check=True
         )
         remotes = result.stdout.strip().split("\n")
         return remote in remotes
@@ -73,7 +65,7 @@ def get_current_branch() -> str:
             ["git", "branch", "--show-current"],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
@@ -87,7 +79,7 @@ def has_commits_ahead(base: str) -> bool:
             ["git", "rev-list", f"{base}..HEAD"],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
         return len(result.stdout.strip()) > 0
     except subprocess.CalledProcessError:
