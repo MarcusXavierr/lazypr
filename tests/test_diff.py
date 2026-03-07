@@ -164,14 +164,12 @@ index 123..456 100644
 -    print("old")
 +    print("new")
 """
-        with patch("lazypr.diff.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout=diff_output
-            )
+        branch_list = MagicMock(returncode=0, stdout="  origin/main\n")
+        diff_result = MagicMock(returncode=0, stdout=diff_output)
+        with patch("lazypr.diff.subprocess.run", side_effect=[branch_list, diff_result]) as mock_run:
             result = get_diff_remote("main")
             # Should call git diff origin/main...HEAD
-            mock_run.assert_called_once_with(
+            mock_run.assert_called_with(
                 ["git", "diff", "origin/main...HEAD"],
                 capture_output=True,
                 text=True,
@@ -181,26 +179,25 @@ index 123..456 100644
 
     def test_uses_custom_remote(self):
         """Should allow custom remote name."""
-        with patch("lazypr.diff.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=0,
-                stdout="diff output"
-            )
-            get_diff_remote("main", remote="upstream")
-            mock_run.assert_called_once_with(
+        branch_list = MagicMock(returncode=0, stdout="  upstream/main\n")
+        diff_result = MagicMock(returncode=0, stdout="diff output")
+        with patch("lazypr.diff.subprocess.run", side_effect=[branch_list, diff_result]) as mock_run:
+            result = get_diff_remote("main", remote="upstream")
+            mock_run.assert_called_with(
                 ["git", "diff", "upstream/main...HEAD"],
                 capture_output=True,
                 text=True,
                 check=True
             )
+            assert result == "diff output"
 
     def test_raises_error_when_remote_branch_missing(self):
-        """Should raise DiffError when remote branch doesn't exist."""
-        with patch("lazypr.diff.subprocess.run") as mock_run:
-            mock_run.side_effect = subprocess.CalledProcessError(128, "git")
+        """Should raise DiffError when no remote branch exists for base."""
+        branch_list = MagicMock(returncode=0, stdout="  origin/other\n")
+        with patch("lazypr.diff.subprocess.run", side_effect=[branch_list, subprocess.CalledProcessError(128, "git")]):
             with pytest.raises(DiffError) as exc_info:
                 get_diff_remote("nonexistent-branch")
-            assert "origin/nonexistent-branch" in str(exc_info.value)
+            assert "nonexistent-branch" in str(exc_info.value)
 
 
 class TestRebuildDiffWithFiles:

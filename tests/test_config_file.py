@@ -111,14 +111,14 @@ class TestEnsureInGitignore:
         mock_file.__exit__ = MagicMock(return_value=False)
         mock_file.read.return_value = gitignore_content
 
-        with patch("lazypr.config_file.Path.exists") as mock_exists:
-            mock_exists.return_value = True
-            with patch("builtins.open", return_value=mock_file):
-                ensure_in_gitignore()
-                # Should have written the updated content
-                mock_file.write.assert_called_once()
-                written = mock_file.write.call_args[0][0]
-                assert ".lazypr" in written
+        with patch("lazypr.config_file.Path.exists", return_value=True), \
+             patch("lazypr.config_file.Path.read_text", return_value=gitignore_content), \
+             patch("builtins.open", return_value=mock_file):
+            ensure_in_gitignore()
+            # Should have written the updated content
+            mock_file.write.assert_called_once()
+            written = mock_file.write.call_args[0][0]
+            assert ".lazypr" in written
 
     def test_skips_when_present(self):
         """Should not modify .gitignore when .lazypr already present."""
