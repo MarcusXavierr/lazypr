@@ -77,7 +77,7 @@ Provider-specific API key variables:
 - `OPENAI_API_KEY` for OpenAI models
 - `ANTHROPIC_API_KEY` for Anthropic models
 - `CEREBRAS_API_KEY` for Cerebras models
-- `GEMINI_API_KEY` for Google Gemini models
+- `GOOGLE_API_KEY` for Google Gemini models (legacy `GEMINI_API_KEY` also accepted)
 - `DEEPSEEK_API_KEY` for DeepSeek models
 
 ### Config File
@@ -126,9 +126,9 @@ LazyPR uses PydanticAI and supports multiple AI providers. Set your model with `
 
 | Model | Environment Variable |
 |-------|----------------------|
-| `google-gla:gemini-2.5-pro` | `GEMINI_API_KEY` |
-| `google-gla:gemini-2.5-flash` | `GEMINI_API_KEY` |
-| `google-gla:gemini-2.0-flash` | `GEMINI_API_KEY` |
+| `google:gemini-2.5-pro` | `GOOGLE_API_KEY` |
+| `google:gemini-2.5-flash` | `GOOGLE_API_KEY` |
+| `google:gemini-2.0-flash` | `GOOGLE_API_KEY` |
 
 ### Cerebras
 
