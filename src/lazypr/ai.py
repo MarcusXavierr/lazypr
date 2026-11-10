@@ -1,5 +1,6 @@
 """AI functions for PR content generation."""
 
+import warnings
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -7,6 +8,14 @@ from pydantic_ai import Agent
 from pydantic_ai.models import ModelSettings
 
 from .config import get_model_name
+
+# pydantic-ai drops `temperature` for models that reject sampling settings
+# (e.g. claude-sonnet-5-5, gpt-6-luna) and warns on every run; that's expected here.
+warnings.filterwarnings(
+    "ignore",
+    message=r"Sampling parameters .* are not supported",
+    category=UserWarning,
+)
 
 
 # Custom exceptions

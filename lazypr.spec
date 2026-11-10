@@ -24,13 +24,11 @@ a = Analysis(
         'pydantic_ai.models.openai',
         'pydantic_ai.models.anthropic',
         'pydantic_ai.models.google',
-        'pydantic_ai.models.gemini',
         'pydantic_ai.models.cerebras',
         # pydantic-ai providers (resolved dynamically from LAZYPR_MODEL string)
         'pydantic_ai.providers.openai',
         'pydantic_ai.providers.anthropic',
         'pydantic_ai.providers.google',
-        'pydantic_ai.providers.google_gla',
         'pydantic_ai.providers.cerebras',
         'pydantic_ai.providers.deepseek',
         'pydantic_ai.providers.ollama',
